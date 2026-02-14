@@ -401,7 +401,7 @@
         // PDF Editor Functions
         async function initializeEditor() {
             const editorSection = document.getElementById('editorSection');
-            editorSection.classList.add('active');
+            editorSection.style.display = 'block';
             
             editorCanvas = document.getElementById('editorCanvas');
             editorCtx = editorCanvas.getContext('2d');
@@ -574,11 +574,12 @@
             selectedFiles = Array.from(e.target.files);
             updateFileList();
             if (selectedFiles.length > 0 && selectedFiles[0].type === 'application/pdf') {
-                await generatePreview();
-                
-                // Initialize editor for edit_pdf
                 if (currentTool === 'edit_pdf') {
+                    // Hide preview for edit_pdf
+                    document.getElementById('previewSection').classList.remove('active');
                     await initializeEditor();
+                } else {
+                    await generatePreview();
                 }
             }
         });
@@ -716,6 +717,7 @@
                     case 'compress_pdf': await compressPDF(); break;
                     case 'jpg_to_pdf': await imagesToPDF(); break;
                     case 'rotate_pdf': await rotatePDF(); break;
+                    case 'edit_pdf': await editPDF(); break;
                     case 'add_page_numbers': await addPageNumbers(); break;
                     case 'add_watermark': await addWatermark(); break;
                     case 'unlock_pdf': await unlockPDF(); break;
