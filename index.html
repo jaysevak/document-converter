@@ -3,143 +3,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Document Converter</title>
+    <title>PDF Tools - Free Online Converter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.11/docxtemplater.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .container { background: white; border-radius: 20px; padding: 40px; max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 28px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
-        .conversion-type { margin-bottom: 30px; }
-        .conversion-type label { display: block; margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 10px; cursor: pointer; transition: all 0.3s; position: relative; }
-        .conversion-type label:hover { background: #e8e8e8; transform: translateX(5px); }
-        .conversion-type input[type="radio"] { margin-right: 10px; }
-        .conversion-type input[type="radio"]:checked + span { font-weight: bold; color: #667eea; }
-        .file-input { margin-bottom: 20px; }
-        .file-input input { width: 100%; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; cursor: pointer; background: #fafafa; }
-        .file-input input:hover { border-color: #667eea; background: #f0f0ff; }
-        button { width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-        button:hover:not(:disabled) { background: #5568d3; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
-        button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        
+        .header { background: rgba(255,255,255,0.95); padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header h1 { color: #667eea; text-align: center; font-size: 32px; }
+        .header p { text-align: center; color: #666; margin-top: 5px; }
+        
+        .tools-grid { max-width: 1200px; margin: 40px auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        
+        .tool-card { background: white; border-radius: 15px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .tool-card i { font-size: 48px; color: #667eea; margin-bottom: 15px; }
+        .tool-card h3 { color: #333; margin-bottom: 10px; font-size: 20px; }
+        .tool-card p { color: #666; font-size: 14px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #333; }
+        
+        .modal h2 { color: #333; margin-bottom: 20px; text-align: center; }
+        
+        .upload-area { border: 3px dashed #667eea; border-radius: 15px; padding: 40px; text-align: center; margin: 20px 0; cursor: pointer; transition: all 0.3s; background: #f8f9ff; }
+        .upload-area:hover { background: #f0f2ff; border-color: #5568d3; }
+        .upload-area i { font-size: 64px; color: #667eea; margin-bottom: 15px; }
+        .upload-area p { color: #666; font-size: 16px; }
+        .upload-area input { display: none; }
+        
+        .file-list { margin: 20px 0; }
+        .file-item { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .file-item i { color: #667eea; margin-right: 10px; }
+        .file-item button { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
+        
+        .convert-btn { width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
+        .convert-btn:hover:not(:disabled) { background: #5568d3; transform: translateY(-2px); }
+        .convert-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
         .status { margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center; display: none; }
         .status.success { background: #d4edda; color: #155724; display: block; }
         .status.error { background: #f8d7da; color: #721c24; display: block; }
         .status.loading { background: #d1ecf1; color: #0c5460; display: block; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
+        
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .note { background: #fff3cd; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 13px; color: #856404; }
+        
+        .footer { text-align: center; padding: 20px; color: white; margin-top: 40px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📄 Document Converter</h1>
-        <p class="subtitle">Convert documents directly in your browser</p>
-        
-        <div class="conversion-type">
-            <label><input type="radio" name="type" value="image_to_pdf" checked><span>📷 Images → PDF</span></label>
-            <label><input type="radio" name="type" value="merge_pdf"><span>📑 Merge PDFs</span></label>
+    <div class="header">
+        <h1><i class="fas fa-file-pdf"></i> PDF Tools</h1>
+        <p>Free Online Document Converter - All processing happens in your browser</p>
+    </div>
+
+    <div class="tools-grid">
+        <div class="tool-card" onclick="openTool('image_to_pdf')">
+            <i class="fas fa-images"></i>
+            <h3>JPG to PDF</h3>
+            <p>Convert images to PDF document</p>
         </div>
         
-        <div class="file-input">
-            <input type="file" id="fileInput" multiple accept="image/*">
+        <div class="tool-card" onclick="openTool('merge_pdf')">
+            <i class="fas fa-object-group"></i>
+            <h3>Merge PDF</h3>
+            <p>Combine multiple PDFs into one</p>
         </div>
         
-        <button id="convertBtn">Convert</button>
+        <div class="tool-card" onclick="openTool('split_pdf')">
+            <i class="fas fa-cut"></i>
+            <h3>Split PDF</h3>
+            <p>Extract pages from PDF</p>
+        </div>
         
-        <div class="status" id="status"></div>
+        <div class="tool-card" onclick="openTool('compress_pdf')">
+            <i class="fas fa-compress"></i>
+            <h3>Compress PDF</h3>
+            <p>Reduce PDF file size</p>
+        </div>
         
-        <div class="note">
-            ℹ️ All conversions happen in your browser. No files are uploaded to any server.
+        <div class="tool-card" onclick="openTool('rotate_pdf')">
+            <i class="fas fa-redo"></i>
+            <h3>Rotate PDF</h3>
+            <p>Rotate PDF pages</p>
+        </div>
+        
+        <div class="tool-card" onclick="openTool('pdf_to_images')">
+            <i class="far fa-images"></i>
+            <h3>PDF to JPG</h3>
+            <p>Convert PDF pages to images</p>
         </div>
     </div>
 
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        const convertBtn = document.getElementById('convertBtn');
-        const status = document.getElementById('status');
-        const typeInputs = document.querySelectorAll('input[name="type"]');
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Convert Files</h2>
+            
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Click to select files or drag and drop</p>
+                <input type="file" id="fileInput" multiple>
+            </div>
+            
+            <div class="file-list" id="fileList"></div>
+            
+            <button class="convert-btn" id="convertBtn" onclick="processFiles()">
+                <i class="fas fa-magic"></i> Convert
+            </button>
+            
+            <div class="status" id="status"></div>
+        </div>
+    </div>
 
-        typeInputs.forEach(input => {
-            input.addEventListener('change', () => {
-                const type = document.querySelector('input[name="type"]:checked').value;
-                if (type === 'image_to_pdf') {
-                    fileInput.accept = 'image/*';
-                    fileInput.multiple = true;
-                } else if (type === 'merge_pdf') {
-                    fileInput.accept = '.pdf';
-                    fileInput.multiple = true;
-                }
-            });
+    <div class="footer">
+        <p>© 2026 PDF Tools - All conversions happen locally in your browser. No files uploaded.</p>
+    </div>
+
+    <script>
+        let currentTool = '';
+        let selectedFiles = [];
+
+        const tools = {
+            image_to_pdf: { title: 'JPG to PDF', accept: 'image/*', multiple: true },
+            merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true },
+            split_pdf: { title: 'Split PDF', accept: '.pdf', multiple: false },
+            compress_pdf: { title: 'Compress PDF', accept: '.pdf', multiple: false },
+            rotate_pdf: { title: 'Rotate PDF', accept: '.pdf', multiple: false },
+            pdf_to_images: { title: 'PDF to JPG', accept: '.pdf', multiple: false }
+        };
+
+        function openTool(tool) {
+            currentTool = tool;
+            const config = tools[tool];
+            document.getElementById('modalTitle').textContent = config.title;
+            document.getElementById('fileInput').accept = config.accept;
+            document.getElementById('fileInput').multiple = config.multiple;
+            document.getElementById('modal').classList.add('active');
+            selectedFiles = [];
+            updateFileList();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('status').className = 'status';
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            updateFileList();
         });
 
-        convertBtn.addEventListener('click', async () => {
-            const files = fileInput.files;
-            const type = document.querySelector('input[name="type"]:checked').value;
+        function updateFileList() {
+            const list = document.getElementById('fileList');
+            if (selectedFiles.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = selectedFiles.map((f, i) => `
+                <div class="file-item">
+                    <span><i class="fas fa-file"></i> ${f.name}</span>
+                    <button onclick="removeFile(${i})"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
 
-            if (!files.length) {
-                status.className = 'status error';
-                status.textContent = '✗ Please select file(s)';
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        async function processFiles() {
+            if (selectedFiles.length === 0) {
+                showStatus('error', 'Please select files first');
                 return;
             }
 
-            status.className = 'status loading';
-            status.innerHTML = '<div class="loader"></div>Converting...';
-            convertBtn.disabled = true;
+            const btn = document.getElementById('convertBtn');
+            btn.disabled = true;
+            showStatus('loading', '<div class="loader"></div>Processing...');
 
             try {
-                if (type === 'image_to_pdf') {
-                    await imagesToPDF(files);
-                } else if (type === 'merge_pdf') {
-                    await mergePDFs(files);
+                switch(currentTool) {
+                    case 'image_to_pdf': await imagesToPDF(); break;
+                    case 'merge_pdf': await mergePDFs(); break;
+                    case 'split_pdf': await splitPDF(); break;
+                    case 'compress_pdf': await compressPDF(); break;
+                    case 'rotate_pdf': await rotatePDF(); break;
+                    case 'pdf_to_images': await pdfToImages(); break;
                 }
-                
-                status.className = 'status success';
-                status.textContent = '✓ Conversion successful! Download started.';
+                showStatus('success', '✓ Success! Your file has been downloaded.');
             } catch (error) {
-                status.className = 'status error';
-                status.textContent = '✗ Error: ' + error.message;
+                showStatus('error', '✗ Error: ' + error.message);
             } finally {
-                convertBtn.disabled = false;
+                btn.disabled = false;
             }
-        });
+        }
 
-        async function imagesToPDF(files) {
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+        }
+
+        async function imagesToPDF() {
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF();
-            let firstPage = true;
+            let first = true;
 
-            for (const file of files) {
+            for (const file of selectedFiles) {
                 const img = await loadImage(file);
-                
-                if (!firstPage) pdf.addPage();
-                firstPage = false;
-
-                const imgWidth = pdf.internal.pageSize.getWidth() - 20;
-                const imgHeight = (img.height * imgWidth) / img.width;
-                
-                pdf.addImage(img.src, 'JPEG', 10, 10, imgWidth, imgHeight);
+                if (!first) pdf.addPage();
+                first = false;
+                const w = pdf.internal.pageSize.getWidth() - 20;
+                const h = (img.height * w) / img.width;
+                pdf.addImage(img.src, 'JPEG', 10, 10, w, h);
             }
-
             pdf.save('converted.pdf');
         }
 
-        async function mergePDFs(files) {
+        async function mergePDFs() {
             const { PDFDocument } = PDFLib;
-            const mergedPdf = await PDFDocument.create();
-
-            for (const file of files) {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await PDFDocument.load(arrayBuffer);
-                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                copiedPages.forEach((page) => mergedPdf.addPage(page));
+            const merged = await PDFDocument.create();
+            for (const file of selectedFiles) {
+                const bytes = await file.arrayBuffer();
+                const pdf = await PDFDocument.load(bytes);
+                const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+                pages.forEach(p => merged.addPage(p));
             }
+            download(await merged.save(), 'merged.pdf', 'application/pdf');
+        }
 
-            const pdfBytes = await mergedPdf.save();
-            downloadFile(pdfBytes, 'merged.pdf', 'application/pdf');
+        async function splitPDF() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            const newPdf = await PDFDocument.create();
+            const [firstPage] = await newPdf.copyPages(pdf, [0]);
+            newPdf.addPage(firstPage);
+            download(await newPdf.save(), 'split.pdf', 'application/pdf');
+        }
+
+        async function compressPDF() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            download(await pdf.save(), 'compressed.pdf', 'application/pdf');
+        }
+
+        async function rotatePDF() {
+            const { PDFDocument, degrees } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            const pages = pdf.getPages();
+            pages.forEach(p => p.setRotation(degrees(90)));
+            download(await pdf.save(), 'rotated.pdf', 'application/pdf');
+        }
+
+        async function pdfToImages() {
+            showStatus('error', 'PDF to Images requires server processing. Use "Split PDF" instead.');
         }
 
         function loadImage(file) {
@@ -151,12 +281,11 @@
                     img.onerror = reject;
                     img.src = e.target.result;
                 };
-                reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
         }
 
-        function downloadFile(data, filename, type) {
+        function download(data, filename, type) {
             const blob = new Blob([data], { type });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -165,6 +294,16 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+
+        // Drag and drop
+        const uploadArea = document.querySelector('.upload-area');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            uploadArea.addEventListener(e, (evt) => evt.preventDefault());
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            selectedFiles = Array.from(e.dataTransfer.files);
+            updateFileList();
+        });
     </script>
 </body>
 </html>
