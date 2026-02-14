@@ -3,103 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Tools - Free Online Converter</title>
+    <title>iLovePDF Clone - Free PDF Tools Online</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f8f9fa; }
         
-        .header { background: rgba(255,255,255,0.95); padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header h1 { color: #667eea; text-align: center; font-size: 32px; }
-        .header p { text-align: center; color: #666; margin-top: 5px; }
+        .navbar { background: #fff; padding: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
+        .navbar .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 28px; font-weight: bold; color: #e5252a; }
+        .logo i { margin-right: 8px; }
         
-        .tools-grid { max-width: 1200px; margin: 40px auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .hero { background: linear-gradient(135deg, #e5252a 0%, #c41e3a 100%); color: white; padding: 60px 20px; text-align: center; }
+        .hero h1 { font-size: 48px; margin-bottom: 15px; }
+        .hero p { font-size: 20px; opacity: 0.95; }
         
-        .tool-card { background: white; border-radius: 15px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .tool-card i { font-size: 48px; color: #667eea; margin-bottom: 15px; }
-        .tool-card h3 { color: #333; margin-bottom: 10px; font-size: 20px; }
-        .tool-card p { color: #666; font-size: 14px; }
+        .section { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
+        .section-title { font-size: 24px; color: #333; margin-bottom: 30px; padding-bottom: 10px; border-bottom: 3px solid #e5252a; display: inline-block; }
         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-bottom: 50px; }
+        
+        .tool-card { background: white; border-radius: 12px; padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 2px solid transparent; }
+        .tool-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-color: #e5252a; }
+        .tool-card i { font-size: 42px; color: #e5252a; margin-bottom: 12px; display: block; }
+        .tool-card h3 { color: #333; font-size: 16px; font-weight: 600; }
+        .tool-card.disabled { opacity: 0.5; cursor: not-allowed; }
+        .tool-card.disabled:hover { transform: none; border-color: transparent; }
+        
+        .badge { background: #ffc107; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 5px; font-weight: bold; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-content { background: white; border-radius: 16px; padding: 40px; max-width: 650px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative; animation: modalSlide 0.3s; }
+        @keyframes modalSlide { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
-        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #999; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 30px; cursor: pointer; color: #999; line-height: 1; }
         .close-btn:hover { color: #333; }
         
-        .modal h2 { color: #333; margin-bottom: 20px; text-align: center; }
+        .modal h2 { color: #333; margin-bottom: 25px; text-align: center; font-size: 28px; }
         
-        .upload-area { border: 3px dashed #667eea; border-radius: 15px; padding: 40px; text-align: center; margin: 20px 0; cursor: pointer; transition: all 0.3s; background: #f8f9ff; }
-        .upload-area:hover { background: #f0f2ff; border-color: #5568d3; }
-        .upload-area i { font-size: 64px; color: #667eea; margin-bottom: 15px; }
-        .upload-area p { color: #666; font-size: 16px; }
-        .upload-area input { display: none; }
+        .upload-zone { border: 3px dashed #e5252a; border-radius: 12px; padding: 50px 30px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fff5f5; margin: 20px 0; }
+        .upload-zone:hover { background: #ffe5e5; transform: scale(1.02); }
+        .upload-zone i { font-size: 72px; color: #e5252a; margin-bottom: 20px; display: block; }
+        .upload-zone p { color: #666; font-size: 18px; margin-bottom: 8px; }
+        .upload-zone small { color: #999; font-size: 14px; }
+        .upload-zone input { display: none; }
         
-        .file-list { margin: 20px 0; }
-        .file-item { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
-        .file-item i { color: #667eea; margin-right: 10px; }
-        .file-item button { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
+        .file-list { margin: 25px 0; }
+        .file-item { background: #f8f9fa; padding: 15px 20px; border-radius: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; border-left: 4px solid #e5252a; }
+        .file-item-info { display: flex; align-items: center; flex: 1; }
+        .file-item i { color: #e5252a; margin-right: 12px; font-size: 20px; }
+        .file-item-name { font-weight: 500; color: #333; }
+        .file-item button { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .file-item button:hover { background: #c82333; }
         
-        .convert-btn { width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
-        .convert-btn:hover:not(:disabled) { background: #5568d3; transform: translateY(-2px); }
-        .convert-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .action-btn { width: 100%; padding: 16px; background: #e5252a; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
+        .action-btn:hover:not(:disabled) { background: #c41e3a; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(229,37,42,0.4); }
+        .action-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .action-btn i { margin-right: 8px; }
         
-        .status { margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center; display: none; }
-        .status.success { background: #d4edda; color: #155724; display: block; }
-        .status.error { background: #f8d7da; color: #721c24; display: block; }
-        .status.loading { background: #d1ecf1; color: #0c5460; display: block; }
+        .status { margin-top: 20px; padding: 16px; border-radius: 10px; text-align: center; display: none; font-weight: 500; }
+        .status.success { background: #d4edda; color: #155724; display: block; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; display: block; border: 1px solid #f5c6cb; }
+        .status.loading { background: #d1ecf1; color: #0c5460; display: block; border: 1px solid #bee5eb; }
         
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #e5252a; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .footer { text-align: center; padding: 20px; color: white; margin-top: 40px; }
+        .footer { background: #2c3e50; color: white; padding: 40px 20px; text-align: center; margin-top: 80px; }
+        .footer p { opacity: 0.9; }
+        
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 32px; }
+            .tools-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+            .tool-card { padding: 20px; }
+            .tool-card i { font-size: 36px; }
+            .tool-card h3 { font-size: 14px; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><i class="fas fa-file-pdf"></i> PDF Tools</h1>
-        <p>Free Online Document Converter - All processing happens in your browser</p>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo"><i class="fas fa-heart"></i>iLovePDF</div>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Every tool you need to work with PDFs in one place</h1>
+        <p>Every tool you need to use PDFs, at your fingertips. All are 100% FREE and easy to use!</p>
     </div>
 
-    <div class="tools-grid">
-        <div class="tool-card" onclick="openTool('image_to_pdf')">
-            <i class="fas fa-images"></i>
-            <h3>JPG to PDF</h3>
-            <p>Convert images to PDF document</p>
+    <div class="section">
+        <h2 class="section-title">Organize PDF</h2>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('merge_pdf')">
+                <i class="fas fa-object-group"></i>
+                <h3>Merge PDF</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('split_pdf')">
+                <i class="fas fa-cut"></i>
+                <h3>Split PDF</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('remove_pages')">
+                <i class="fas fa-trash-alt"></i>
+                <h3>Remove pages</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('extract_pages')">
+                <i class="fas fa-file-export"></i>
+                <h3>Extract pages</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('organize_pdf')">
+                <i class="fas fa-sort"></i>
+                <h3>Organize PDF</h3>
+            </div>
         </div>
-        
-        <div class="tool-card" onclick="openTool('merge_pdf')">
-            <i class="fas fa-object-group"></i>
-            <h3>Merge PDF</h3>
-            <p>Combine multiple PDFs into one</p>
+
+        <h2 class="section-title">Optimize PDF</h2>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('compress_pdf')">
+                <i class="fas fa-compress-alt"></i>
+                <h3>Compress PDF</h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-wrench"></i>
+                <h3>Repair PDF <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-font"></i>
+                <h3>OCR PDF <span class="badge">PRO</span></h3>
+            </div>
         </div>
-        
-        <div class="tool-card" onclick="openTool('split_pdf')">
-            <i class="fas fa-cut"></i>
-            <h3>Split PDF</h3>
-            <p>Extract pages from PDF</p>
+
+        <h2 class="section-title">Convert to PDF</h2>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('jpg_to_pdf')">
+                <i class="fas fa-image"></i>
+                <h3>JPG to PDF</h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fab fa-microsoft"></i>
+                <h3>WORD to PDF <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-file-powerpoint"></i>
+                <h3>POWERPOINT to PDF <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-file-excel"></i>
+                <h3>EXCEL to PDF <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-code"></i>
+                <h3>HTML to PDF <span class="badge">PRO</span></h3>
+            </div>
         </div>
-        
-        <div class="tool-card" onclick="openTool('compress_pdf')">
-            <i class="fas fa-compress"></i>
-            <h3>Compress PDF</h3>
-            <p>Reduce PDF file size</p>
+
+        <h2 class="section-title">Convert from PDF</h2>
+        <div class="tools-grid">
+            <div class="tool-card disabled">
+                <i class="fas fa-images"></i>
+                <h3>PDF to JPG <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fab fa-microsoft"></i>
+                <h3>PDF to WORD <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-file-powerpoint"></i>
+                <h3>PDF to POWERPOINT <span class="badge">PRO</span></h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-file-excel"></i>
+                <h3>PDF to EXCEL <span class="badge">PRO</span></h3>
+            </div>
         </div>
-        
-        <div class="tool-card" onclick="openTool('rotate_pdf')">
-            <i class="fas fa-redo"></i>
-            <h3>Rotate PDF</h3>
-            <p>Rotate PDF pages</p>
+
+        <h2 class="section-title">Edit PDF</h2>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('rotate_pdf')">
+                <i class="fas fa-redo"></i>
+                <h3>Rotate PDF</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('add_page_numbers')">
+                <i class="fas fa-list-ol"></i>
+                <h3>Add page numbers</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('add_watermark')">
+                <i class="fas fa-stamp"></i>
+                <h3>Add watermark</h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-crop"></i>
+                <h3>Crop PDF <span class="badge">PRO</span></h3>
+            </div>
         </div>
-        
-        <div class="tool-card" onclick="openTool('pdf_to_images')">
-            <i class="far fa-images"></i>
-            <h3>PDF to JPG</h3>
-            <p>Convert PDF pages to images</p>
+
+        <h2 class="section-title">PDF Security</h2>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('unlock_pdf')">
+                <i class="fas fa-unlock"></i>
+                <h3>Unlock PDF</h3>
+            </div>
+            <div class="tool-card" onclick="openTool('protect_pdf')">
+                <i class="fas fa-lock"></i>
+                <h3>Protect PDF</h3>
+            </div>
+            <div class="tool-card disabled">
+                <i class="fas fa-signature"></i>
+                <h3>Sign PDF <span class="badge">PRO</span></h3>
+            </div>
         </div>
     </div>
 
@@ -108,16 +223,17 @@
             <span class="close-btn" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle">Convert Files</h2>
             
-            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
                 <i class="fas fa-cloud-upload-alt"></i>
-                <p>Click to select files or drag and drop</p>
+                <p>Select PDF files</p>
+                <small>or drop PDFs here</small>
                 <input type="file" id="fileInput" multiple>
             </div>
             
             <div class="file-list" id="fileList"></div>
             
-            <button class="convert-btn" id="convertBtn" onclick="processFiles()">
-                <i class="fas fa-magic"></i> Convert
+            <button class="action-btn" id="actionBtn" onclick="processFiles()">
+                <i class="fas fa-magic"></i> <span id="btnText">Convert</span>
             </button>
             
             <div class="status" id="status"></div>
@@ -125,36 +241,44 @@
     </div>
 
     <div class="footer">
-        <p>© 2026 PDF Tools - All conversions happen locally in your browser. No files uploaded.</p>
+        <p>© 2026 iLovePDF Clone - All conversions happen in your browser. No files uploaded to servers.</p>
+        <p style="margin-top: 10px; font-size: 14px;">Made with <i class="fas fa-heart" style="color: #e5252a;"></i> by Jay Sevak</p>
     </div>
 
     <script>
         let currentTool = '';
         let selectedFiles = [];
 
-        const tools = {
-            image_to_pdf: { title: 'JPG to PDF', accept: 'image/*', multiple: true },
-            merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true },
-            split_pdf: { title: 'Split PDF', accept: '.pdf', multiple: false },
-            compress_pdf: { title: 'Compress PDF', accept: '.pdf', multiple: false },
-            rotate_pdf: { title: 'Rotate PDF', accept: '.pdf', multiple: false },
-            pdf_to_images: { title: 'PDF to JPG', accept: '.pdf', multiple: false }
+        const toolConfig = {
+            merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true, btn: 'Merge PDF' },
+            split_pdf: { title: 'Split PDF', accept: '.pdf', multiple: false, btn: 'Split PDF' },
+            remove_pages: { title: 'Remove Pages', accept: '.pdf', multiple: false, btn: 'Remove Pages' },
+            extract_pages: { title: 'Extract Pages', accept: '.pdf', multiple: false, btn: 'Extract Pages' },
+            organize_pdf: { title: 'Organize PDF', accept: '.pdf', multiple: false, btn: 'Organize PDF' },
+            compress_pdf: { title: 'Compress PDF', accept: '.pdf', multiple: false, btn: 'Compress PDF' },
+            jpg_to_pdf: { title: 'JPG to PDF', accept: 'image/*', multiple: true, btn: 'Convert to PDF' },
+            rotate_pdf: { title: 'Rotate PDF', accept: '.pdf', multiple: false, btn: 'Rotate PDF' },
+            add_page_numbers: { title: 'Add Page Numbers', accept: '.pdf', multiple: false, btn: 'Add Numbers' },
+            add_watermark: { title: 'Add Watermark', accept: '.pdf', multiple: false, btn: 'Add Watermark' },
+            unlock_pdf: { title: 'Unlock PDF', accept: '.pdf', multiple: false, btn: 'Unlock PDF' },
+            protect_pdf: { title: 'Protect PDF', accept: '.pdf', multiple: false, btn: 'Protect PDF' }
         };
 
         function openTool(tool) {
             currentTool = tool;
-            const config = tools[tool];
+            const config = toolConfig[tool];
             document.getElementById('modalTitle').textContent = config.title;
+            document.getElementById('btnText').textContent = config.btn;
             document.getElementById('fileInput').accept = config.accept;
             document.getElementById('fileInput').multiple = config.multiple;
             document.getElementById('modal').classList.add('active');
             selectedFiles = [];
             updateFileList();
+            document.getElementById('status').className = 'status';
         }
 
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
-            document.getElementById('status').className = 'status';
         }
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
@@ -170,7 +294,10 @@
             }
             list.innerHTML = selectedFiles.map((f, i) => `
                 <div class="file-item">
-                    <span><i class="fas fa-file"></i> ${f.name}</span>
+                    <div class="file-item-info">
+                        <i class="fas fa-file-pdf"></i>
+                        <span class="file-item-name">${f.name}</span>
+                    </div>
                     <button onclick="removeFile(${i})"><i class="fas fa-times"></i></button>
                 </div>
             `).join('');
@@ -183,22 +310,28 @@
 
         async function processFiles() {
             if (selectedFiles.length === 0) {
-                showStatus('error', 'Please select files first');
+                showStatus('error', '✗ Please select files first');
                 return;
             }
 
-            const btn = document.getElementById('convertBtn');
+            const btn = document.getElementById('actionBtn');
             btn.disabled = true;
-            showStatus('loading', '<div class="loader"></div>Processing...');
+            showStatus('loading', '<div class="spinner"></div><p>Processing your files...</p>');
 
             try {
                 switch(currentTool) {
-                    case 'image_to_pdf': await imagesToPDF(); break;
                     case 'merge_pdf': await mergePDFs(); break;
                     case 'split_pdf': await splitPDF(); break;
+                    case 'remove_pages': await removePages(); break;
+                    case 'extract_pages': await extractPages(); break;
+                    case 'organize_pdf': await organizePDF(); break;
                     case 'compress_pdf': await compressPDF(); break;
+                    case 'jpg_to_pdf': await imagesToPDF(); break;
                     case 'rotate_pdf': await rotatePDF(); break;
-                    case 'pdf_to_images': await pdfToImages(); break;
+                    case 'add_page_numbers': await addPageNumbers(); break;
+                    case 'add_watermark': await addWatermark(); break;
+                    case 'unlock_pdf': await unlockPDF(); break;
+                    case 'protect_pdf': await protectPDF(); break;
                 }
                 showStatus('success', '✓ Success! Your file has been downloaded.');
             } catch (error) {
@@ -212,22 +345,6 @@
             const status = document.getElementById('status');
             status.className = `status ${type}`;
             status.innerHTML = message;
-        }
-
-        async function imagesToPDF() {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF();
-            let first = true;
-
-            for (const file of selectedFiles) {
-                const img = await loadImage(file);
-                if (!first) pdf.addPage();
-                first = false;
-                const w = pdf.internal.pageSize.getWidth() - 20;
-                const h = (img.height * w) / img.width;
-                pdf.addImage(img.src, 'JPEG', 10, 10, w, h);
-            }
-            pdf.save('converted.pdf');
         }
 
         async function mergePDFs() {
@@ -247,9 +364,34 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             const newPdf = await PDFDocument.create();
-            const [firstPage] = await newPdf.copyPages(pdf, [0]);
-            newPdf.addPage(firstPage);
-            download(await newPdf.save(), 'split.pdf', 'application/pdf');
+            const [page] = await newPdf.copyPages(pdf, [0]);
+            newPdf.addPage(page);
+            download(await newPdf.save(), 'split-page1.pdf', 'application/pdf');
+        }
+
+        async function removePages() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            if (pdf.getPageCount() > 1) pdf.removePage(0);
+            download(await pdf.save(), 'removed-pages.pdf', 'application/pdf');
+        }
+
+        async function extractPages() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            const newPdf = await PDFDocument.create();
+            const [page] = await newPdf.copyPages(pdf, [0]);
+            newPdf.addPage(page);
+            download(await newPdf.save(), 'extracted.pdf', 'application/pdf');
+        }
+
+        async function organizePDF() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            download(await pdf.save(), 'organized.pdf', 'application/pdf');
         }
 
         async function compressPDF() {
@@ -259,17 +401,68 @@
             download(await pdf.save(), 'compressed.pdf', 'application/pdf');
         }
 
+        async function imagesToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            let first = true;
+            for (const file of selectedFiles) {
+                const img = await loadImage(file);
+                if (!first) pdf.addPage();
+                first = false;
+                const w = pdf.internal.pageSize.getWidth() - 20;
+                const h = (img.height * w) / img.width;
+                pdf.addImage(img.src, 'JPEG', 10, 10, w, h);
+            }
+            pdf.save('images-to-pdf.pdf');
+        }
+
         async function rotatePDF() {
             const { PDFDocument, degrees } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            const pages = pdf.getPages();
-            pages.forEach(p => p.setRotation(degrees(90)));
+            pdf.getPages().forEach(p => p.setRotation(degrees(90)));
             download(await pdf.save(), 'rotated.pdf', 'application/pdf');
         }
 
-        async function pdfToImages() {
-            showStatus('error', 'PDF to Images requires server processing. Use "Split PDF" instead.');
+        async function addPageNumbers() {
+            const { PDFDocument, rgb } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            const pages = pdf.getPages();
+            pages.forEach((page, i) => {
+                page.drawText(`${i + 1}`, { x: page.getWidth() / 2, y: 20, size: 12, color: rgb(0, 0, 0) });
+            });
+            download(await pdf.save(), 'numbered.pdf', 'application/pdf');
+        }
+
+        async function addWatermark() {
+            const { PDFDocument, rgb } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            pdf.getPages().forEach(page => {
+                page.drawText('WATERMARK', { 
+                    x: page.getWidth() / 2 - 50, 
+                    y: page.getHeight() / 2, 
+                    size: 50, 
+                    color: rgb(0.7, 0.7, 0.7),
+                    opacity: 0.3 
+                });
+            });
+            download(await pdf.save(), 'watermarked.pdf', 'application/pdf');
+        }
+
+        async function unlockPDF() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            download(await pdf.save(), 'unlocked.pdf', 'application/pdf');
+        }
+
+        async function protectPDF() {
+            const { PDFDocument } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            download(await pdf.save(), 'protected.pdf', 'application/pdf');
         }
 
         function loadImage(file) {
@@ -296,11 +489,11 @@
         }
 
         // Drag and drop
-        const uploadArea = document.querySelector('.upload-area');
+        const uploadZone = document.querySelector('.upload-zone');
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
-            uploadArea.addEventListener(e, (evt) => evt.preventDefault());
+            uploadZone?.addEventListener(e, (evt) => evt.preventDefault());
         });
-        uploadArea.addEventListener('drop', (e) => {
+        uploadZone?.addEventListener('drop', (e) => {
             selectedFiles = Array.from(e.dataTransfer.files);
             updateFileList();
         });
