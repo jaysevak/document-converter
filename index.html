@@ -70,7 +70,18 @@
         .status.error { background: #f8d7da; color: #721c24; display: block; border: 1px solid #f5c6cb; }
         .status.loading { background: #d1ecf1; color: #0c5460; display: block; border: 1px solid #bee5eb; }
         
-        .preview-section { margin: 20px 0; display: none; background: #f8f9fa; padding: 20px; border-radius: 12px; }
+        .editor-section { margin: 20px 0; display: none; }
+        .editor-section.active { display: block; }
+        .editor-toolbar { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .editor-tool-btn { padding: 10px 15px; background: white; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .editor-tool-btn:hover { border-color: #2563eb; background: #eff6ff; }
+        .editor-tool-btn.active { border-color: #2563eb; background: #2563eb; color: white; }
+        .editor-tool-btn i { font-size: 16px; }
+        .editor-canvas-container { position: relative; border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden; background: #f5f5f5; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+        .editor-canvas { max-width: 100%; cursor: crosshair; }
+        .color-picker { width: 40px; height: 40px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; }
+        .size-input { width: 60px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; }
+        .text-input { flex: 1; min-width: 200px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; }
         .preview-section.active { display: block; }
         .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
         .preview-page { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
@@ -199,6 +210,10 @@
 
         <h2 class="section-title">Edit PDF</h2>
         <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('edit_pdf')">
+                <i class="fas fa-edit"></i>
+                <h3>Edit PDF</h3>
+            </div>
             <div class="tool-card" onclick="openTool('rotate_pdf')">
                 <i class="fas fa-redo"></i>
                 <h3>Rotate PDF</h3>
@@ -265,6 +280,35 @@
                 <div class="preview-container" id="previewContainer"></div>
             </div>
             
+            <div class="editor-section" id="editorSection">
+                <div class="editor-toolbar">
+                    <button class="editor-tool-btn active" onclick="setEditorTool('text')" id="tool-text">
+                        <i class="fas fa-font"></i> Text
+                    </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('draw')" id="tool-draw">
+                        <i class="fas fa-pen"></i> Draw
+                    </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('shape')" id="tool-shape">
+                        <i class="fas fa-square"></i> Shape
+                    </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('highlight')" id="tool-highlight">
+                        <i class="fas fa-highlighter"></i> Highlight
+                    </button>
+                    <input type="color" class="color-picker" id="editorColor" value="#000000" title="Color">
+                    <input type="number" class="size-input" id="editorSize" value="14" min="8" max="72" title="Size">
+                    <input type="text" class="text-input" id="editorText" placeholder="Enter text to add..." style="display:none;">
+                    <button class="editor-tool-btn" onclick="clearEditorCanvas()" style="margin-left: auto;">
+                        <i class="fas fa-undo"></i> Clear
+                    </button>
+                </div>
+                <div class="editor-canvas-container">
+                    <canvas id="editorCanvas" class="editor-canvas"></canvas>
+                </div>
+                <p style="text-align: center; color: #666; margin-top: 10px; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> Click on the canvas to add text, draw, or add shapes
+                </p>
+            </div>
+            
             <button class="action-btn" id="actionBtn" onclick="processFiles()">
                 <i class="fas fa-magic"></i> <span id="btnText">Convert</span>
             </button>
@@ -285,9 +329,15 @@
     <script>
         let convertedFileData = null;
         let convertedFileName = '';
-
         let currentTool = '';
         let selectedFiles = [];
+        
+        // Editor variables
+        let editorTool = 'text';
+        let editorCanvas = null;
+        let editorCtx = null;
+        let isDrawing = false;
+        let editorAnnotations = [];
 
         const toolConfig = {
             merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true, btn: 'Merge PDF', desc: 'Combine PDFs in the order you want' },
@@ -313,6 +363,7 @@
             pdf_to_ppt: { title: 'PDF to POWERPOINT', accept: '.pdf', multiple: false, btn: 'Convert to PPT', desc: 'Turn PDF files into PPT slideshows' },
             pdf_to_excel: { title: 'PDF to EXCEL', accept: '.pdf', multiple: false, btn: 'Convert to Excel', desc: 'Pull data from PDFs into Excel spreadsheets' },
             crop_pdf: { title: 'Crop PDF', accept: '.pdf', multiple: false, btn: 'Crop PDF', desc: 'Crop margins or select specific areas' },
+            edit_pdf: { title: 'Edit PDF', accept: '.pdf', multiple: false, btn: 'Save Edited PDF', desc: 'Add text, images, shapes or annotations' },
             sign_pdf: { title: 'Sign PDF', accept: '.pdf', multiple: false, btn: 'Sign PDF', desc: 'Sign yourself or request electronic signatures' },
             redact_pdf: { title: 'Redact PDF', accept: '.pdf', multiple: false, btn: 'Redact PDF', desc: 'Permanently remove sensitive information' },
             compare_pdf: { title: 'Compare PDF', accept: '.pdf', multiple: true, btn: 'Compare PDFs', desc: 'Show side-by-side document comparison' }
@@ -330,14 +381,193 @@
             selectedFiles = [];
             updateFileList();
             document.getElementById('status').className = 'status';
+            
+            // Show editor for edit_pdf tool
+            if (tool === 'edit_pdf') {
+                document.getElementById('editorSection').style.display = 'none';
+            }
         }
 
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
             document.getElementById('previewSection').classList.remove('active');
+            document.getElementById('editorSection').classList.remove('active');
             document.getElementById('downloadBtn').classList.remove('active');
             convertedFileData = null;
             convertedFileName = '';
+            editorAnnotations = [];
+        }
+
+        // PDF Editor Functions
+        async function initializeEditor() {
+            const editorSection = document.getElementById('editorSection');
+            editorSection.classList.add('active');
+            
+            editorCanvas = document.getElementById('editorCanvas');
+            editorCtx = editorCanvas.getContext('2d');
+            
+            try {
+                const arrayBuffer = await selectedFiles[0].arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                if (typeof pdfjsLib === 'undefined') return;
+                
+                if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                
+                const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(1);
+                
+                const scale = 1.5;
+                const viewport = page.getViewport({scale: scale});
+                
+                editorCanvas.width = viewport.width;
+                editorCanvas.height = viewport.height;
+                
+                await page.render({
+                    canvasContext: editorCtx,
+                    viewport: viewport
+                }).promise;
+                
+                setupEditorEvents();
+                
+            } catch (error) {
+                console.error('Editor init error:', error);
+            }
+        }
+
+        function setupEditorEvents() {
+            editorCanvas.addEventListener('click', handleEditorClick);
+            editorCanvas.addEventListener('mousedown', handleEditorMouseDown);
+            editorCanvas.addEventListener('mousemove', handleEditorMouseMove);
+            editorCanvas.addEventListener('mouseup', handleEditorMouseUp);
+        }
+
+        function setEditorTool(tool) {
+            editorTool = tool;
+            document.querySelectorAll('.editor-tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tool-${tool}`).classList.add('active');
+            
+            const textInput = document.getElementById('editorText');
+            textInput.style.display = tool === 'text' ? 'block' : 'none';
+        }
+
+        function handleEditorClick(e) {
+            if (editorTool === 'text') {
+                const rect = editorCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const text = document.getElementById('editorText').value || 'Sample Text';
+                const color = document.getElementById('editorColor').value;
+                const size = document.getElementById('editorSize').value;
+                
+                editorCtx.font = `${size}px Arial`;
+                editorCtx.fillStyle = color;
+                editorCtx.fillText(text, x, y);
+                
+                editorAnnotations.push({type: 'text', x, y, text, color, size});
+            } else if (editorTool === 'shape') {
+                const rect = editorCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const color = document.getElementById('editorColor').value;
+                const size = parseInt(document.getElementById('editorSize').value) * 3;
+                
+                editorCtx.strokeStyle = color;
+                editorCtx.lineWidth = 2;
+                editorCtx.strokeRect(x, y, size, size);
+                
+                editorAnnotations.push({type: 'rect', x, y, size, color});
+            }
+        }
+
+        function handleEditorMouseDown(e) {
+            if (editorTool === 'draw' || editorTool === 'highlight') {
+                isDrawing = true;
+                const rect = editorCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                editorCtx.beginPath();
+                editorCtx.moveTo(x, y);
+            }
+        }
+
+        function handleEditorMouseMove(e) {
+            if (!isDrawing) return;
+            
+            const rect = editorCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const color = document.getElementById('editorColor').value;
+            const size = document.getElementById('editorSize').value;
+            
+            editorCtx.strokeStyle = editorTool === 'highlight' ? color + '80' : color;
+            editorCtx.lineWidth = editorTool === 'highlight' ? size * 2 : size / 3;
+            editorCtx.lineCap = 'round';
+            editorCtx.lineTo(x, y);
+            editorCtx.stroke();
+        }
+
+        function handleEditorMouseUp() {
+            isDrawing = false;
+        }
+
+        function clearEditorCanvas() {
+            if (editorCanvas && editorCtx) {
+                initializeEditor();
+                editorAnnotations = [];
+            }
+        }
+
+        async function editPDF() {
+            const { PDFDocument, rgb } = PDFLib;
+            const bytes = await selectedFiles[0].arrayBuffer();
+            const pdf = await PDFDocument.load(bytes);
+            const pages = pdf.getPages();
+            const firstPage = pages[0];
+            
+            // Apply annotations
+            editorAnnotations.forEach(annotation => {
+                const pageHeight = firstPage.getHeight();
+                const scale = pageHeight / editorCanvas.height;
+                
+                if (annotation.type === 'text') {
+                    const hexColor = annotation.color;
+                    const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                    const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                    const b = parseInt(hexColor.substr(5,2), 16) / 255;
+                    
+                    firstPage.drawText(annotation.text, {
+                        x: annotation.x * scale,
+                        y: pageHeight - (annotation.y * scale),
+                        size: annotation.size * scale,
+                        color: rgb(r, g, b)
+                    });
+                } else if (annotation.type === 'rect') {
+                    const hexColor = annotation.color;
+                    const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                    const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                    const b = parseInt(hexColor.substr(5,2), 16) / 255;
+                    
+                    firstPage.drawRectangle({
+                        x: annotation.x * scale,
+                        y: pageHeight - (annotation.y * scale) - (annotation.size * scale),
+                        width: annotation.size * scale,
+                        height: annotation.size * scale,
+                        borderColor: rgb(r, g, b),
+                        borderWidth: 2
+                    });
+                }
+            });
+            
+            convertedFileData = await pdf.save();
+            convertedFileName = 'edited.pdf';
+            
+            showStatus('success', `✓ PDF edited successfully with ${editorAnnotations.length} annotation(s)!`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         document.getElementById('fileInput').addEventListener('change', async (e) => {
@@ -345,6 +575,11 @@
             updateFileList();
             if (selectedFiles.length > 0 && selectedFiles[0].type === 'application/pdf') {
                 await generatePreview();
+                
+                // Initialize editor for edit_pdf
+                if (currentTool === 'edit_pdf') {
+                    await initializeEditor();
+                }
             }
         });
 
@@ -496,6 +731,7 @@
                     case 'pdf_to_ppt': await pdfToPPT(); break;
                     case 'pdf_to_excel': await pdfToExcel(); break;
                     case 'crop_pdf': await cropPDF(); break;
+                    case 'edit_pdf': await editPDF(); break;
                     case 'sign_pdf': await signPDF(); break;
                     case 'redact_pdf': await redactPDF(); break;
                     case 'compare_pdf': await comparePDF(); break;
