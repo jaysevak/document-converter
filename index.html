@@ -77,6 +77,11 @@
         .preview-canvas { border: 2px solid #e0e0e0; border-radius: 8px; width: 100%; max-width: 300px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .preview-info { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; color: #666; }
         .preview-info strong { color: #333; }
+        
+        .download-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 15px; transition: all 0.3s; display: none; }
+        .download-btn.active { display: block; }
+        .download-btn:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40,167,69,0.4); }
+        .download-btn i { margin-right: 8px; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -258,6 +263,10 @@
                 <i class="fas fa-magic"></i> <span id="btnText">Convert</span>
             </button>
             
+            <button class="download-btn" id="downloadBtn" onclick="downloadConvertedFile()">
+                <i class="fas fa-download"></i> Download Converted File
+            </button>
+            
             <div class="status" id="status"></div>
         </div>
     </div>
@@ -268,6 +277,9 @@
     </div>
 
     <script>
+        let convertedFileData = null;
+        let convertedFileName = '';
+
         let currentTool = '';
         let selectedFiles = [];
 
@@ -316,6 +328,10 @@
 
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
+            document.getElementById('previewSection').classList.remove('active');
+            document.getElementById('downloadBtn').classList.remove('active');
+            convertedFileData = null;
+            convertedFileName = '';
         }
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
@@ -462,7 +478,9 @@
             }
 
             const btn = document.getElementById('actionBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
             btn.disabled = true;
+            downloadBtn.classList.remove('active');
             showStatus('loading', '<div class="spinner"></div><p>Processing your files...</p>');
 
             try {
@@ -494,13 +512,35 @@
                     case 'redact_pdf': await redactPDF(); break;
                     case 'compare_pdf': await comparePDF(); break;
                 }
-                showStatus('success', '✓ Success! Your file has been downloaded.');
+                
+                // Show download button if file was converted
+                if (convertedFileData) {
+                    downloadBtn.classList.add('active');
+                    showStatus('success', '✓ Conversion complete! Click the download button below.');
+                } else {
+                    showStatus('success', '✓ Success! Your file has been downloaded.');
+                }
             } catch (error) {
                 if (error.message !== 'SKIP_DEFAULT_MESSAGE') {
                     showStatus('error', '✗ Error: ' + error.message);
                 }
             } finally {
                 btn.disabled = false;
+            }
+        }
+
+        function downloadConvertedFile() {
+            if (convertedFileData) {
+                const blob = new Blob([convertedFileData], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = convertedFileName;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showStatus('success', '✓ File downloaded successfully!');
+                document.getElementById('downloadBtn').classList.remove('active');
             }
         }
 
@@ -608,7 +648,6 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             
-            // Remove metadata
             pdf.setTitle('');
             pdf.setAuthor('');
             pdf.setSubject('');
@@ -626,7 +665,9 @@
             const savedBytes = originalSize - compressedSize;
             const reduction = ((savedBytes / originalSize) * 100).toFixed(1);
             
-            download(compressedBytes, 'compressed.pdf', 'application/pdf');
+            // Store for download
+            convertedFileData = compressedBytes;
+            convertedFileName = 'compressed.pdf';
             
             const origKB = (originalSize / 1024).toFixed(1);
             const compKB = (compressedSize / 1024).toFixed(1);
@@ -634,7 +675,7 @@
             if (savedBytes > 0) {
                 showStatus('success', `✓ Compressed successfully!<br>Original: ${origKB} KB → Compressed: ${compKB} KB<br>Saved ${reduction}% (${(savedBytes/1024).toFixed(1)} KB)`);
             } else {
-                showStatus('success', `✓ File optimized!<br>This PDF is already well-compressed (${origKB} KB)<br>No further reduction possible without quality loss.`);
+                showStatus('success', `✓ File optimized!<br>This PDF is already well-compressed (${origKB} KB)`);
             }
             throw new Error('SKIP_DEFAULT_MESSAGE');
         }
