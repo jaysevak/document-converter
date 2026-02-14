@@ -340,11 +340,11 @@
             convertedFileName = '';
         }
 
-        document.getElementById('fileInput').addEventListener('change', (e) => {
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
             selectedFiles = Array.from(e.target.files);
             updateFileList();
             if (selectedFiles.length > 0 && selectedFiles[0].type === 'application/pdf') {
-                generatePreview();
+                await generatePreview();
             }
         });
 
@@ -372,56 +372,74 @@
         }
 
         async function generatePreview() {
-            if (selectedFiles.length === 0 || selectedFiles[0].type !== 'application/pdf') return;
+            if (selectedFiles.length === 0 || selectedFiles[0].type !== 'application/pdf') {
+                return;
+            }
 
             const previewSection = document.getElementById('previewSection');
             const previewContainer = document.getElementById('previewContainer');
             const previewInfo = document.getElementById('previewInfo');
             
             previewSection.classList.add('active');
-            previewContainer.innerHTML = '<div style="text-align:center; padding:20px;"><div class="spinner"></div><p>Loading preview...</p></div>';
+            previewContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><p style="margin-top:10px;">Loading preview...</p></div>';
             
             try {
                 const arrayBuffer = await selectedFiles[0].arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
                 
-                // Load PDF with PDF.js
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                const pdf = await pdfjsLib.getDocument({data: uint8Array}).promise;
+                // Check if PDF.js is loaded
+                if (typeof pdfjsLib === 'undefined') {
+                    throw new Error('PDF.js library not loaded');
+                }
+                
+                // Set worker
+                if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                
+                // Load PDF
+                const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+                const pdf = await loadingTask.promise;
                 const numPages = pdf.numPages;
                 const fileSize = (arrayBuffer.byteLength / 1024).toFixed(1);
                 
                 previewInfo.textContent = `${numPages} pages • ${fileSize} KB`;
                 previewContainer.innerHTML = '';
                 
-                // Render first 6 pages as thumbnails
+                // Render first 6 pages
                 const pagesToShow = Math.min(numPages, 6);
-                for (let i = 1; i <= pagesToShow; i++) {
-                    const page = await pdf.getPage(i);
+                for (let pageNum = 1; pageNum <= pagesToShow; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
                     const scale = 0.5;
-                    const viewport = page.getViewport({scale});
+                    const viewport = page.getViewport({scale: scale});
                     
                     const canvas = document.createElement('canvas');
                     const context = canvas.getContext('2d');
                     canvas.height = viewport.height;
                     canvas.width = viewport.width;
                     
-                    await page.render({canvasContext: context, viewport: viewport}).promise;
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    
+                    await page.render(renderContext).promise;
                     
                     const pageDiv = document.createElement('div');
                     pageDiv.className = 'preview-page';
                     pageDiv.innerHTML = `
                         ${canvas.outerHTML}
-                        <div class="preview-page-num">Page ${i}</div>
+                        <div class="preview-page-num">Page ${pageNum}</div>
                     `;
                     previewContainer.appendChild(pageDiv);
                 }
                 
+                // Show more pages indicator
                 if (numPages > 6) {
                     const moreDiv = document.createElement('div');
                     moreDiv.className = 'preview-page';
                     moreDiv.innerHTML = `
-                        <div style="padding: 40px 10px; color: #666;">
+                        <div style="padding: 40px 10px; color: #666; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px;">
                             <i class="fas fa-ellipsis-h" style="font-size: 24px;"></i>
                             <div style="margin-top: 10px; font-size: 12px;">+${numPages - 6} more pages</div>
                         </div>
@@ -431,7 +449,13 @@
                 
             } catch (error) {
                 console.error('Preview error:', error);
-                previewContainer.innerHTML = '<p style="text-align:center; color:#666;">Preview not available</p>';
+                previewContainer.innerHTML = `
+                    <div style="text-align:center; padding:20px; color:#999;">
+                        <i class="fas fa-file-pdf" style="font-size:48px; color:#ddd;"></i>
+                        <p style="margin-top:10px;">Preview not available</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
             }
         }
 
