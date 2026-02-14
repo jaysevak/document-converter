@@ -70,6 +70,15 @@
         .status.error { background: #f8d7da; color: #721c24; display: block; border: 1px solid #f5c6cb; }
         .status.loading { background: #d1ecf1; color: #0c5460; display: block; border: 1px solid #bee5eb; }
         
+        .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .preview-page { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+        .preview-page canvas { width: 100%; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .preview-page canvas:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .preview-page-num { margin-top: 8px; font-size: 12px; color: #666; font-weight: 500; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .preview-header h3 { color: #333; margin: 0; font-size: 16px; }
+        .preview-info { color: #666; font-size: 14px; }
+        
         .editor-section { margin: 20px 0; display: none; }
         .editor-section.active { display: block; }
         .editor-toolbar { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -77,11 +86,19 @@
         .editor-tool-btn:hover { border-color: #2563eb; background: #eff6ff; }
         .editor-tool-btn.active { border-color: #2563eb; background: #2563eb; color: white; }
         .editor-tool-btn i { font-size: 16px; }
-        .editor-canvas-container { position: relative; border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden; background: #f5f5f5; min-height: 400px; display: flex; align-items: center; justify-content: center; }
-        .editor-canvas { max-width: 100%; cursor: crosshair; }
+        .editor-canvas-container { position: relative; border: 2px solid #e0e0e0; border-radius: 10px; overflow: auto; background: white; max-height: 600px; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+        .editor-canvas { cursor: crosshair; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .color-picker { width: 40px; height: 40px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; }
         .size-input { width: 60px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; }
         .text-input { flex: 1; min-width: 200px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; }
+        
+        .editor-preview { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; display: none; }
+        .editor-preview.active { display: block; }
+        .editor-preview h4 { color: #333; margin-bottom: 15px; }
+        .editor-preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .editor-preview-item { background: white; padding: 15px; border-radius: 8px; }
+        .editor-preview-item h5 { color: #666; font-size: 14px; margin-bottom: 10px; }
+        .editor-preview-canvas { width: 100%; border: 1px solid #e0e0e0; border-radius: 4px; }
         .preview-section.active { display: block; }
         .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
         .preview-page { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
@@ -281,6 +298,7 @@
             </div>
             
             <div class="editor-section" id="editorSection">
+                <h3 style="color: #333; margin-bottom: 15px;"><i class="fas fa-edit"></i> Edit Your PDF</h3>
                 <div class="editor-toolbar">
                     <button class="editor-tool-btn active" onclick="setEditorTool('text')" id="tool-text">
                         <i class="fas fa-font"></i> Text
@@ -295,8 +313,8 @@
                         <i class="fas fa-highlighter"></i> Highlight
                     </button>
                     <input type="color" class="color-picker" id="editorColor" value="#000000" title="Color">
-                    <input type="number" class="size-input" id="editorSize" value="14" min="8" max="72" title="Size">
-                    <input type="text" class="text-input" id="editorText" placeholder="Enter text to add..." style="display:none;">
+                    <input type="number" class="size-input" id="editorSize" value="16" min="8" max="72" title="Size">
+                    <input type="text" class="text-input" id="editorText" placeholder="Type text to add..." value="Sample Text">
                     <button class="editor-tool-btn" onclick="clearEditorCanvas()" style="margin-left: auto;">
                         <i class="fas fa-undo"></i> Clear
                     </button>
@@ -305,8 +323,22 @@
                     <canvas id="editorCanvas" class="editor-canvas"></canvas>
                 </div>
                 <p style="text-align: center; color: #666; margin-top: 10px; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> Click on the canvas to add text, draw, or add shapes
+                    <i class="fas fa-info-circle"></i> Click to add text • Click and drag to draw • Select tool and click for shapes
                 </p>
+                
+                <div class="editor-preview" id="editorPreview">
+                    <h4><i class="fas fa-eye"></i> Preview: Before & After</h4>
+                    <div class="editor-preview-grid">
+                        <div class="editor-preview-item">
+                            <h5>Original PDF</h5>
+                            <canvas id="originalPreview" class="editor-preview-canvas"></canvas>
+                        </div>
+                        <div class="editor-preview-item">
+                            <h5>With Your Edits</h5>
+                            <canvas id="editedPreview" class="editor-preview-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <button class="action-btn" id="actionBtn" onclick="processFiles()">
@@ -449,9 +481,65 @@
             editorTool = tool;
             document.querySelectorAll('.editor-tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tool-${tool}`).classList.add('active');
+        }
+            const editorPreview = document.getElementById('editorPreview');
+            editorPreview.classList.add('active');
             
-            const textInput = document.getElementById('editorText');
-            textInput.style.display = tool === 'text' ? 'block' : 'none';
+            // Render original
+            const originalCanvas = document.getElementById('originalPreview');
+            const originalCtx = originalCanvas.getContext('2d');
+            
+            const arrayBuffer = await selectedFiles[0].arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            
+            const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1);
+            
+            const scale = 0.5;
+            const viewport = page.getViewport({scale: scale});
+            
+            originalCanvas.width = viewport.width;
+            originalCanvas.height = viewport.height;
+            
+            await page.render({
+                canvasContext: originalCtx,
+                viewport: viewport
+            }).promise;
+            
+            // Render edited version
+            const editedCanvas = document.getElementById('editedPreview');
+            const editedCtx = editedCanvas.getContext('2d');
+            editedCanvas.width = viewport.width;
+            editedCanvas.height = viewport.height;
+            
+            await page.render({
+                canvasContext: editedCtx,
+                viewport: viewport
+            }).promise;
+            
+            // Apply annotations to edited preview
+            const scaleRatio = viewport.width / editorCanvas.width;
+            editorAnnotations.forEach(annotation => {
+                if (annotation.type === 'text') {
+                    editedCtx.font = `${annotation.size * scaleRatio}px Arial`;
+                    editedCtx.fillStyle = annotation.color;
+                    editedCtx.fillText(annotation.text, annotation.x * scaleRatio, annotation.y * scaleRatio);
+                } else if (annotation.type === 'rect') {
+                    editedCtx.strokeStyle = annotation.color;
+                    editedCtx.lineWidth = 2;
+                    editedCtx.strokeRect(
+                        annotation.x * scaleRatio,
+                        annotation.y * scaleRatio,
+                        annotation.size * scaleRatio,
+                        annotation.size * scaleRatio
+                    );
+                }
+            });
         }
 
         function handleEditorClick(e) {
@@ -573,12 +661,16 @@
         document.getElementById('fileInput').addEventListener('change', async (e) => {
             selectedFiles = Array.from(e.target.files);
             updateFileList();
+            
             if (selectedFiles.length > 0 && selectedFiles[0].type === 'application/pdf') {
-                await generatePreview();
-                
-                // Initialize editor for edit_pdf
+                // For edit_pdf, show editor immediately
                 if (currentTool === 'edit_pdf') {
+                    document.getElementById('previewSection').classList.remove('active');
                     await initializeEditor();
+                    document.getElementById('actionBtn').textContent = 'Generate Preview';
+                } else {
+                    // For other tools, show preview
+                    await generatePreview();
                 }
             }
         });
@@ -702,6 +794,24 @@
 
             const btn = document.getElementById('actionBtn');
             const downloadBtn = document.getElementById('downloadBtn');
+            
+            // For edit_pdf, first click generates preview
+            if (currentTool === 'edit_pdf' && btn.textContent === 'Generate Preview') {
+                btn.disabled = true;
+                showStatus('loading', '<div class="spinner"></div><p>Generating preview...</p>');
+                
+                try {
+                    await generateEditPreview();
+                    btn.textContent = 'Save Edited PDF';
+                    btn.disabled = false;
+                    showStatus('success', '✓ Preview generated! Review your changes and click "Save Edited PDF" to download.');
+                } catch (error) {
+                    showStatus('error', '✗ Error generating preview');
+                    btn.disabled = false;
+                }
+                return;
+            }
+            
             btn.disabled = true;
             downloadBtn.classList.remove('active');
             showStatus('loading', '<div class="spinner"></div><p>Processing your files...</p>');
