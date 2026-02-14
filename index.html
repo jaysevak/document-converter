@@ -230,6 +230,7 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle">Convert Files</h2>
+            <p id="modalDesc" style="text-align: center; color: #666; margin-bottom: 20px;"></p>
             
             <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
                 <i class="fas fa-cloud-upload-alt"></i>
@@ -258,38 +259,39 @@
         let selectedFiles = [];
 
         const toolConfig = {
-            merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true, btn: 'Merge PDF' },
-            split_pdf: { title: 'Split PDF', accept: '.pdf', multiple: false, btn: 'Split PDF' },
-            remove_pages: { title: 'Remove Pages', accept: '.pdf', multiple: false, btn: 'Remove Pages' },
-            extract_pages: { title: 'Extract Pages', accept: '.pdf', multiple: false, btn: 'Extract Pages' },
-            organize_pdf: { title: 'Organize PDF', accept: '.pdf', multiple: false, btn: 'Organize PDF' },
-            compress_pdf: { title: 'Compress PDF', accept: '.pdf', multiple: false, btn: 'Compress PDF' },
-            jpg_to_pdf: { title: 'JPG to PDF', accept: 'image/*', multiple: true, btn: 'Convert to PDF' },
-            rotate_pdf: { title: 'Rotate PDF', accept: '.pdf', multiple: false, btn: 'Rotate PDF' },
-            add_page_numbers: { title: 'Add Page Numbers', accept: '.pdf', multiple: false, btn: 'Add Numbers' },
-            add_watermark: { title: 'Add Watermark', accept: '.pdf', multiple: false, btn: 'Add Watermark' },
-            unlock_pdf: { title: 'Unlock PDF', accept: '.pdf', multiple: false, btn: 'Unlock PDF' },
-            protect_pdf: { title: 'Protect PDF', accept: '.pdf', multiple: false, btn: 'Protect PDF' },
-            repair_pdf: { title: 'Repair PDF', accept: '.pdf', multiple: false, btn: 'Repair PDF' },
-            ocr_pdf: { title: 'OCR PDF', accept: '.pdf', multiple: false, btn: 'Extract Text' },
-            word_to_pdf: { title: 'WORD to PDF', accept: '.doc,.docx', multiple: false, btn: 'Convert to PDF' },
-            ppt_to_pdf: { title: 'POWERPOINT to PDF', accept: '.ppt,.pptx', multiple: false, btn: 'Convert to PDF' },
-            excel_to_pdf: { title: 'EXCEL to PDF', accept: '.xls,.xlsx', multiple: false, btn: 'Convert to PDF' },
-            html_to_pdf: { title: 'HTML to PDF', accept: '.html', multiple: false, btn: 'Convert to PDF' },
-            pdf_to_jpg: { title: 'PDF to JPG', accept: '.pdf', multiple: false, btn: 'Convert to Images' },
-            pdf_to_word: { title: 'PDF to WORD', accept: '.pdf', multiple: false, btn: 'Convert to WORD' },
-            pdf_to_ppt: { title: 'PDF to POWERPOINT', accept: '.pdf', multiple: false, btn: 'Convert to PPT' },
-            pdf_to_excel: { title: 'PDF to EXCEL', accept: '.pdf', multiple: false, btn: 'Convert to Excel' },
-            crop_pdf: { title: 'Crop PDF', accept: '.pdf', multiple: false, btn: 'Crop PDF' },
-            sign_pdf: { title: 'Sign PDF', accept: '.pdf', multiple: false, btn: 'Sign PDF' },
-            redact_pdf: { title: 'Redact PDF', accept: '.pdf', multiple: false, btn: 'Redact PDF' },
-            compare_pdf: { title: 'Compare PDF', accept: '.pdf', multiple: true, btn: 'Compare PDFs' }
+            merge_pdf: { title: 'Merge PDF', accept: '.pdf', multiple: true, btn: 'Merge PDF', desc: 'Combine PDFs in the order you want' },
+            split_pdf: { title: 'Split PDF', accept: '.pdf', multiple: false, btn: 'Split PDF', desc: 'Separate pages into independent PDF files' },
+            remove_pages: { title: 'Remove Pages', accept: '.pdf', multiple: false, btn: 'Remove Pages', desc: 'Delete unwanted pages from your PDF' },
+            extract_pages: { title: 'Extract Pages', accept: '.pdf', multiple: false, btn: 'Extract Pages', desc: 'Extract specific pages from PDF' },
+            organize_pdf: { title: 'Organize PDF', accept: '.pdf', multiple: false, btn: 'Organize PDF', desc: 'Sort pages however you like' },
+            compress_pdf: { title: 'Compress PDF', accept: '.pdf', multiple: false, btn: 'Compress PDF', desc: 'Reduce file size while optimizing quality' },
+            jpg_to_pdf: { title: 'JPG to PDF', accept: 'image/*', multiple: true, btn: 'Convert to PDF', desc: 'Convert JPG images to PDF in seconds' },
+            rotate_pdf: { title: 'Rotate PDF', accept: '.pdf', multiple: false, btn: 'Rotate PDF', desc: 'Rotate your PDFs the way you need them' },
+            add_page_numbers: { title: 'Add Page Numbers', accept: '.pdf', multiple: false, btn: 'Add Numbers', desc: 'Add page numbers into PDFs with ease' },
+            add_watermark: { title: 'Add Watermark', accept: '.pdf', multiple: false, btn: 'Add Watermark', desc: 'Stamp text over your PDF' },
+            unlock_pdf: { title: 'Unlock PDF', accept: '.pdf', multiple: false, btn: 'Unlock PDF', desc: 'Remove PDF password security' },
+            protect_pdf: { title: 'Protect PDF', accept: '.pdf', multiple: false, btn: 'Protect PDF', desc: 'Protect PDF files with a password' },
+            repair_pdf: { title: 'Repair PDF', accept: '.pdf', multiple: false, btn: 'Repair PDF', desc: 'Repair a damaged PDF and recover data' },
+            ocr_pdf: { title: 'OCR PDF', accept: '.pdf', multiple: false, btn: 'Extract Text', desc: 'Convert scanned PDF into searchable text' },
+            word_to_pdf: { title: 'WORD to PDF', accept: '.doc,.docx', multiple: false, btn: 'Convert to PDF', desc: 'Make DOC files easy to read' },
+            ppt_to_pdf: { title: 'POWERPOINT to PDF', accept: '.ppt,.pptx', multiple: false, btn: 'Convert to PDF', desc: 'Make PPT slideshows easy to view' },
+            excel_to_pdf: { title: 'EXCEL to PDF', accept: '.xls,.xlsx', multiple: false, btn: 'Convert to PDF', desc: 'Make EXCEL spreadsheets easy to read' },
+            html_to_pdf: { title: 'HTML to PDF', accept: '.html', multiple: false, btn: 'Convert to PDF', desc: 'Convert webpages in HTML to PDF' },
+            pdf_to_jpg: { title: 'PDF to JPG', accept: '.pdf', multiple: false, btn: 'Convert to Images', desc: 'Convert each PDF page into a JPG' },
+            pdf_to_word: { title: 'PDF to WORD', accept: '.pdf', multiple: false, btn: 'Convert to WORD', desc: 'Convert PDF files into editable DOC documents' },
+            pdf_to_ppt: { title: 'PDF to POWERPOINT', accept: '.pdf', multiple: false, btn: 'Convert to PPT', desc: 'Turn PDF files into PPT slideshows' },
+            pdf_to_excel: { title: 'PDF to EXCEL', accept: '.pdf', multiple: false, btn: 'Convert to Excel', desc: 'Pull data from PDFs into Excel spreadsheets' },
+            crop_pdf: { title: 'Crop PDF', accept: '.pdf', multiple: false, btn: 'Crop PDF', desc: 'Crop margins or select specific areas' },
+            sign_pdf: { title: 'Sign PDF', accept: '.pdf', multiple: false, btn: 'Sign PDF', desc: 'Sign yourself or request electronic signatures' },
+            redact_pdf: { title: 'Redact PDF', accept: '.pdf', multiple: false, btn: 'Redact PDF', desc: 'Permanently remove sensitive information' },
+            compare_pdf: { title: 'Compare PDF', accept: '.pdf', multiple: true, btn: 'Compare PDFs', desc: 'Show side-by-side document comparison' }
         };
 
         function openTool(tool) {
             currentTool = tool;
             const config = toolConfig[tool];
             document.getElementById('modalTitle').textContent = config.title;
+            document.getElementById('modalDesc').textContent = config.desc;
             document.getElementById('btnText').textContent = config.btn;
             document.getElementById('fileInput').accept = config.accept;
             document.getElementById('fileInput').multiple = config.multiple;
@@ -483,7 +485,7 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             
-            // Remove metadata to reduce size
+            // Remove metadata
             pdf.setTitle('');
             pdf.setAuthor('');
             pdf.setSubject('');
@@ -491,25 +493,27 @@
             pdf.setProducer('');
             pdf.setCreator('');
             
-            // Save with compression options
             const compressedBytes = await pdf.save({
                 useObjectStreams: false,
-                addDefaultPage: false,
-                objectsPerTick: 50
+                addDefaultPage: false
             });
             
             const originalSize = bytes.byteLength;
             const compressedSize = compressedBytes.byteLength;
-            const reduction = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
+            const savedBytes = originalSize - compressedSize;
+            const reduction = ((savedBytes / originalSize) * 100).toFixed(1);
             
             download(compressedBytes, 'compressed.pdf', 'application/pdf');
             
-            if (compressedSize < originalSize) {
-                showStatus('success', `✓ Compressed! Original: ${(originalSize/1024).toFixed(1)}KB → Compressed: ${(compressedSize/1024).toFixed(1)}KB (${reduction}% reduction)`);
+            const origKB = (originalSize / 1024).toFixed(1);
+            const compKB = (compressedSize / 1024).toFixed(1);
+            
+            if (savedBytes > 0) {
+                showStatus('success', `✓ Compressed successfully!<br>Original: ${origKB} KB → Compressed: ${compKB} KB<br>Saved ${reduction}% (${(savedBytes/1024).toFixed(1)} KB)`);
             } else {
-                showStatus('success', `✓ File saved. Note: This PDF is already optimized. Original: ${(originalSize/1024).toFixed(1)}KB`);
+                showStatus('success', `✓ File optimized!<br>This PDF is already well-compressed (${origKB} KB)<br>No further reduction possible without quality loss.`);
             }
-            throw new Error('SKIP_DEFAULT_MESSAGE'); // Skip the default success message
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function imagesToPDF() {
