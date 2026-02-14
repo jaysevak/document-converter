@@ -482,6 +482,58 @@
             document.querySelectorAll('.editor-tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tool-${tool}`).classList.add('active');
         }
+
+        async function generateEditPreview() {
+            const editorPreview = document.getElementById('editorPreview');
+            editorPreview.classList.add('active');
+            
+            const arrayBuffer = await selectedFiles[0].arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            
+            const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1);
+            
+            const scale = 0.5;
+            const viewport = page.getViewport({scale: scale});
+            
+            // Render original
+            const originalCanvas = document.getElementById('originalPreview');
+            const originalCtx = originalCanvas.getContext('2d');
+            originalCanvas.width = viewport.width;
+            originalCanvas.height = viewport.height;
+            await page.render({canvasContext: originalCtx, viewport: viewport}).promise;
+            
+            // Render edited
+            const editedCanvas = document.getElementById('editedPreview');
+            const editedCtx = editedCanvas.getContext('2d');
+            editedCanvas.width = viewport.width;
+            editedCanvas.height = viewport.height;
+            await page.render({canvasContext: editedCtx, viewport: viewport}).promise;
+            
+            // Apply annotations
+            const scaleRatio = viewport.width / editorCanvas.width;
+            editorAnnotations.forEach(annotation => {
+                if (annotation.type === 'text') {
+                    editedCtx.font = `${annotation.size * scaleRatio}px Arial`;
+                    editedCtx.fillStyle = annotation.color;
+                    editedCtx.fillText(annotation.text, annotation.x * scaleRatio, annotation.y * scaleRatio);
+                } else if (annotation.type === 'rect') {
+                    editedCtx.strokeStyle = annotation.color;
+                    editedCtx.lineWidth = 2;
+                    editedCtx.strokeRect(
+                        annotation.x * scaleRatio,
+                        annotation.y * scaleRatio,
+                        annotation.size * scaleRatio,
+                        annotation.size * scaleRatio
+                    );
+                }
+            });
+        }
             const editorPreview = document.getElementById('editorPreview');
             editorPreview.classList.add('active');
             
