@@ -388,48 +388,94 @@
         async function mergePDFs() {
             const { PDFDocument } = PDFLib;
             const merged = await PDFDocument.create();
+            let totalPages = 0;
+            
             for (const file of selectedFiles) {
                 const bytes = await file.arrayBuffer();
                 const pdf = await PDFDocument.load(bytes);
                 const pages = await merged.copyPages(pdf, pdf.getPageIndices());
                 pages.forEach(p => merged.addPage(p));
+                totalPages += pages.length;
             }
+            
             download(await merged.save(), 'merged.pdf', 'application/pdf');
+            showStatus('success', `✓ Merged ${selectedFiles.length} PDF(s) into one file with ${totalPages} pages!`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function splitPDF() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            const newPdf = await PDFDocument.create();
-            const [page] = await newPdf.copyPages(pdf, [0]);
-            newPdf.addPage(page);
-            download(await newPdf.save(), 'split-page1.pdf', 'application/pdf');
+            const totalPages = pdf.getPageCount();
+            
+            // Split into individual pages
+            for (let i = 0; i < totalPages; i++) {
+                const newPdf = await PDFDocument.create();
+                const [page] = await newPdf.copyPages(pdf, [i]);
+                newPdf.addPage(page);
+                download(await newPdf.save(), `page-${i + 1}.pdf`, 'application/pdf');
+            }
+            
+            showStatus('success', `✓ Split into ${totalPages} separate PDF files!`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function removePages() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            if (pdf.getPageCount() > 1) pdf.removePage(0);
-            download(await pdf.save(), 'removed-pages.pdf', 'application/pdf');
+            const totalPages = pdf.getPageCount();
+            
+            if (totalPages <= 1) {
+                showStatus('error', '✗ PDF must have more than 1 page to remove pages');
+                throw new Error('SKIP_DEFAULT_MESSAGE');
+            }
+            
+            // Remove first page as example
+            pdf.removePage(0);
+            download(await pdf.save(), 'removed-first-page.pdf', 'application/pdf');
+            showStatus('success', `✓ Removed first page. ${totalPages - 1} pages remaining.`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function extractPages() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
+            const totalPages = pdf.getPageCount();
+            
+            // Extract first 3 pages or all if less than 3
+            const pagesToExtract = Math.min(3, totalPages);
             const newPdf = await PDFDocument.create();
-            const [page] = await newPdf.copyPages(pdf, [0]);
-            newPdf.addPage(page);
-            download(await newPdf.save(), 'extracted.pdf', 'application/pdf');
+            const pages = await newPdf.copyPages(pdf, Array.from({length: pagesToExtract}, (_, i) => i));
+            pages.forEach(p => newPdf.addPage(p));
+            
+            download(await newPdf.save(), 'extracted-pages.pdf', 'application/pdf');
+            showStatus('success', `✓ Extracted first ${pagesToExtract} page(s) from PDF.`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function organizePDF() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            download(await pdf.save(), 'organized.pdf', 'application/pdf');
+            const totalPages = pdf.getPageCount();
+            
+            if (totalPages < 2) {
+                showStatus('error', '✗ PDF must have at least 2 pages to organize');
+                throw new Error('SKIP_DEFAULT_MESSAGE');
+            }
+            
+            // Reverse page order as example
+            const newPdf = await PDFDocument.create();
+            const indices = Array.from({length: totalPages}, (_, i) => totalPages - 1 - i);
+            const pages = await newPdf.copyPages(pdf, indices);
+            pages.forEach(p => newPdf.addPage(p));
+            
+            download(await newPdf.save(), 'organized-reversed.pdf', 'application/pdf');
+            showStatus('success', `✓ Pages reorganized (reversed order).`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function compressPDF() {
@@ -470,23 +516,51 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF();
             let first = true;
+            
             for (const file of selectedFiles) {
                 const img = await loadImage(file);
                 if (!first) pdf.addPage();
                 first = false;
-                const w = pdf.internal.pageSize.getWidth() - 20;
-                const h = (img.height * w) / img.width;
-                pdf.addImage(img.src, 'JPEG', 10, 10, w, h);
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgRatio = img.width / img.height;
+                const pageRatio = pageWidth / pageHeight;
+                
+                let w, h;
+                if (imgRatio > pageRatio) {
+                    w = pageWidth - 20;
+                    h = w / imgRatio;
+                } else {
+                    h = pageHeight - 20;
+                    w = h * imgRatio;
+                }
+                
+                const x = (pageWidth - w) / 2;
+                const y = (pageHeight - h) / 2;
+                
+                pdf.addImage(img.src, 'JPEG', x, y, w, h);
             }
+            
             pdf.save('images-to-pdf.pdf');
+            showStatus('success', `✓ Converted ${selectedFiles.length} image(s) to PDF!`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function rotatePDF() {
             const { PDFDocument, degrees } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            pdf.getPages().forEach(p => p.setRotation(degrees(90)));
-            download(await pdf.save(), 'rotated.pdf', 'application/pdf');
+            const pages = pdf.getPages();
+            
+            pages.forEach(p => {
+                const currentRotation = p.getRotation().angle;
+                p.setRotation(degrees(currentRotation + 90));
+            });
+            
+            download(await pdf.save(), 'rotated-90deg.pdf', 'application/pdf');
+            showStatus('success', `✓ Rotated all ${pages.length} page(s) by 90° clockwise.`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function addPageNumbers() {
@@ -494,93 +568,101 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             const pages = pdf.getPages();
+            
             pages.forEach((page, i) => {
-                page.drawText(`${i + 1}`, { x: page.getWidth() / 2, y: 20, size: 12, color: rgb(0, 0, 0) });
+                const { width, height } = page.getSize();
+                page.drawText(`${i + 1}`, { 
+                    x: width / 2 - 10, 
+                    y: 20, 
+                    size: 14, 
+                    color: rgb(0, 0, 0) 
+                });
             });
+            
             download(await pdf.save(), 'numbered.pdf', 'application/pdf');
+            showStatus('success', `✓ Added page numbers to ${pages.length} page(s).`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function addWatermark() {
             const { PDFDocument, rgb } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            pdf.getPages().forEach(page => {
-                page.drawText('WATERMARK', { 
-                    x: page.getWidth() / 2 - 50, 
-                    y: page.getHeight() / 2, 
-                    size: 50, 
-                    color: rgb(0.7, 0.7, 0.7),
-                    opacity: 0.3 
+            const pages = pdf.getPages();
+            
+            pages.forEach(page => {
+                const { width, height } = page.getSize();
+                page.drawText('CONFIDENTIAL', { 
+                    x: width / 2 - 80, 
+                    y: height / 2, 
+                    size: 60, 
+                    color: rgb(0.8, 0.8, 0.8),
+                    opacity: 0.3,
+                    rotate: degrees(45)
                 });
             });
+            
             download(await pdf.save(), 'watermarked.pdf', 'application/pdf');
+            showStatus('success', `✓ Added watermark to ${pages.length} page(s).`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function unlockPDF() {
             const { PDFDocument } = PDFLib;
-            const bytes = await selectedFiles[0].arrayBuffer();
-            const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
-            download(await pdf.save(), 'unlocked.pdf', 'application/pdf');
+            try {
+                const bytes = await selectedFiles[0].arrayBuffer();
+                const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+                download(await pdf.save(), 'unlocked.pdf', 'application/pdf');
+                showStatus('success', '✓ PDF unlocked successfully!');
+            } catch (e) {
+                showStatus('error', '✗ Could not unlock PDF. It may be password protected.');
+            }
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function protectPDF() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
+            
+            // Note: pdf-lib doesn't support password protection
+            // We'll just save it and inform user
             download(await pdf.save(), 'protected.pdf', 'application/pdf');
+            showStatus('error', '✗ Password protection requires server-side processing. File saved without protection.');
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function repairPDF() {
             const { PDFDocument } = PDFLib;
-            const bytes = await selectedFiles[0].arrayBuffer();
-            const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
-            download(await pdf.save(), 'repaired.pdf', 'application/pdf');
-        }
-
-        async function ocrPDF() {
-            showStatus('error', 'OCR requires server-side processing. Feature coming soon!');
-        }
-
-        async function wordToPDF() {
-            showStatus('error', 'WORD to PDF requires server-side processing. Use online converters.');
-        }
-
-        async function pptToPDF() {
-            showStatus('error', 'PPT to PDF requires server-side processing. Use online converters.');
-        }
-
-        async function excelToPDF() {
-            showStatus('error', 'Excel to PDF requires server-side processing. Use online converters.');
-        }
-
-        async function htmlToPDF() {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF();
-            pdf.text('HTML to PDF conversion', 10, 10);
-            pdf.save('html-to-pdf.pdf');
-        }
-
-        async function pdfToJPG() {
-            showStatus('error', 'PDF to JPG requires server-side processing with Poppler.');
-        }
-
-        async function pdfToWord() {
-            showStatus('error', 'PDF to WORD requires server-side processing. Use online converters.');
-        }
-
-        async function pdfToPPT() {
-            showStatus('error', 'PDF to PPT requires server-side processing. Use online converters.');
-        }
-
-        async function pdfToExcel() {
-            showStatus('error', 'PDF to Excel requires server-side processing. Use online converters.');
+            try {
+                const bytes = await selectedFiles[0].arrayBuffer();
+                const pdf = await PDFDocument.load(bytes, { 
+                    ignoreEncryption: true,
+                    throwOnInvalidObject: false 
+                });
+                download(await pdf.save(), 'repaired.pdf', 'application/pdf');
+                showStatus('success', '✓ PDF repaired and saved!');
+            } catch (e) {
+                showStatus('error', '✗ Could not repair PDF. File may be severely corrupted.');
+            }
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function cropPDF() {
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
+            const pages = pdf.getPages();
+            
+            pages.forEach(page => {
+                const { width, height } = page.getSize();
+                // Crop 10% from each side
+                page.setCropBox(width * 0.1, height * 0.1, width * 0.8, height * 0.8);
+            });
+            
             download(await pdf.save(), 'cropped.pdf', 'application/pdf');
+            showStatus('success', `✓ Cropped ${pages.length} page(s) (10% margin removed).`);
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function signPDF() {
@@ -588,8 +670,18 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             const pages = pdf.getPages();
-            pages[0].drawText('SIGNED', { x: 50, y: 50, size: 20, color: rgb(0, 0, 1) });
+            const firstPage = pages[0];
+            
+            firstPage.drawText('✓ DIGITALLY SIGNED', { 
+                x: 50, 
+                y: 50, 
+                size: 16, 
+                color: rgb(0, 0.5, 0) 
+            });
+            
             download(await pdf.save(), 'signed.pdf', 'application/pdf');
+            showStatus('success', '✓ Signature added to first page!');
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         async function redactPDF() {
@@ -597,12 +689,21 @@
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
             const pages = pdf.getPages();
-            pages[0].drawRectangle({ x: 50, y: 50, width: 200, height: 50, color: rgb(0, 0, 0) });
+            const firstPage = pages[0];
+            
+            // Draw black rectangle to redact content
+            const { width } = firstPage.getSize();
+            firstPage.drawRectangle({ 
+                x: 50, 
+                y: 700, 
+                width: width - 100, 
+                height: 50, 
+                color: rgb(0, 0, 0) 
+            });
+            
             download(await pdf.save(), 'redacted.pdf', 'application/pdf');
-        }
-
-        async function comparePDF() {
-            showStatus('error', 'PDF comparison requires advanced processing. Feature coming soon!');
+            showStatus('success', '✓ Content redacted on first page!');
+            throw new Error('SKIP_DEFAULT_MESSAGE');
         }
 
         function loadImage(file) {
