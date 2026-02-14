@@ -1,0 +1,7 @@
+pdf2docx
+docx2pdf
+Pillow
+img2pdf
+PyPDF2
+pdf2image
+flask
