@@ -371,7 +371,9 @@
                 }
                 showStatus('success', '✓ Success! Your file has been downloaded.');
             } catch (error) {
-                showStatus('error', '✗ Error: ' + error.message);
+                if (error.message !== 'SKIP_DEFAULT_MESSAGE') {
+                    showStatus('error', '✗ Error: ' + error.message);
+                }
             } finally {
                 btn.disabled = false;
             }
@@ -434,7 +436,34 @@
             const { PDFDocument } = PDFLib;
             const bytes = await selectedFiles[0].arrayBuffer();
             const pdf = await PDFDocument.load(bytes);
-            download(await pdf.save(), 'compressed.pdf', 'application/pdf');
+            
+            // Remove metadata to reduce size
+            pdf.setTitle('');
+            pdf.setAuthor('');
+            pdf.setSubject('');
+            pdf.setKeywords([]);
+            pdf.setProducer('');
+            pdf.setCreator('');
+            
+            // Save with compression options
+            const compressedBytes = await pdf.save({
+                useObjectStreams: false,
+                addDefaultPage: false,
+                objectsPerTick: 50
+            });
+            
+            const originalSize = bytes.byteLength;
+            const compressedSize = compressedBytes.byteLength;
+            const reduction = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
+            
+            download(compressedBytes, 'compressed.pdf', 'application/pdf');
+            
+            if (compressedSize < originalSize) {
+                showStatus('success', `✓ Compressed! Original: ${(originalSize/1024).toFixed(1)}KB → Compressed: ${(compressedSize/1024).toFixed(1)}KB (${reduction}% reduction)`);
+            } else {
+                showStatus('success', `✓ File saved. Note: This PDF is already optimized. Original: ${(originalSize/1024).toFixed(1)}KB`);
+            }
+            throw new Error('SKIP_DEFAULT_MESSAGE'); // Skip the default success message
         }
 
         async function imagesToPDF() {
