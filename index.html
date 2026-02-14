@@ -402,21 +402,31 @@
         };
 
         function openTool(tool) {
-            currentTool = tool;
-            const config = toolConfig[tool];
-            document.getElementById('modalTitle').textContent = config.title;
-            document.getElementById('modalDesc').textContent = config.desc;
-            document.getElementById('btnText').textContent = config.btn;
-            document.getElementById('fileInput').accept = config.accept;
-            document.getElementById('fileInput').multiple = config.multiple;
-            document.getElementById('modal').classList.add('active');
-            selectedFiles = [];
-            updateFileList();
-            document.getElementById('status').className = 'status';
-            
-            // Show editor for edit_pdf tool
-            if (tool === 'edit_pdf') {
-                document.getElementById('editorSection').style.display = 'none';
+            try {
+                currentTool = tool;
+                const config = toolConfig[tool];
+                if (!config) {
+                    console.error('Tool not found:', tool);
+                    alert('Tool configuration not found: ' + tool);
+                    return;
+                }
+                document.getElementById('modalTitle').textContent = config.title;
+                document.getElementById('modalDesc').textContent = config.desc;
+                document.getElementById('btnText').textContent = config.btn;
+                document.getElementById('fileInput').accept = config.accept;
+                document.getElementById('fileInput').multiple = config.multiple;
+                document.getElementById('modal').classList.add('active');
+                selectedFiles = [];
+                updateFileList();
+                document.getElementById('status').className = 'status';
+                
+                // Reset button text for edit_pdf
+                if (tool === 'edit_pdf') {
+                    document.getElementById('editorSection').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error opening tool:', error);
+                alert('Error: ' + error.message);
             }
         }
 
