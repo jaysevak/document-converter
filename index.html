@@ -479,13 +479,14 @@
                 const text = document.getElementById('editorText').value || 'Sample Text';
                 const color = document.getElementById('editorColor').value;
                 const size = document.getElementById('editorSize').value;
+                const font = document.getElementById('fontSelect').value;
                 
-                editorCtx.font = `${size}px Arial`;
+                editorCtx.font = `${size}px ${font}`;
                 editorCtx.fillStyle = color;
                 editorCtx.fillText(text, x, y);
                 
-                editorAnnotations.push({type: 'text', x, y, text, color, size});
-            } else if (editorTool === 'shape') {
+                editorAnnotations.push({type: 'text', x, y, text, color, size, font});
+            } else if (editorTool === 'rectangle' || editorTool === 'circle' || editorTool === 'arrow' || editorTool === 'whiteout') {
                 const rect = editorCanvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
@@ -545,18 +546,18 @@
             const pdf = await PDFDocument.load(bytes);
             const pages = pdf.getPages();
             const firstPage = pages[0];
+            const pageHeight = firstPage.getHeight();
+            const pageWidth = firstPage.getWidth();
+            const scale = pageHeight / editorCanvas.height;
             
             // Apply annotations
             editorAnnotations.forEach(annotation => {
-                const pageHeight = firstPage.getHeight();
-                const scale = pageHeight / editorCanvas.height;
+                const hexColor = annotation.color;
+                const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                const b = parseInt(hexColor.substr(5,2), 16) / 255;
                 
                 if (annotation.type === 'text') {
-                    const hexColor = annotation.color;
-                    const r = parseInt(hexColor.substr(1,2), 16) / 255;
-                    const g = parseInt(hexColor.substr(3,2), 16) / 255;
-                    const b = parseInt(hexColor.substr(5,2), 16) / 255;
-                    
                     firstPage.drawText(annotation.text, {
                         x: annotation.x * scale,
                         y: pageHeight - (annotation.y * scale),
@@ -564,11 +565,6 @@
                         color: rgb(r, g, b)
                     });
                 } else if (annotation.type === 'rect') {
-                    const hexColor = annotation.color;
-                    const r = parseInt(hexColor.substr(1,2), 16) / 255;
-                    const g = parseInt(hexColor.substr(3,2), 16) / 255;
-                    const b = parseInt(hexColor.substr(5,2), 16) / 255;
-                    
                     firstPage.drawRectangle({
                         x: annotation.x * scale,
                         y: pageHeight - (annotation.y * scale) - (annotation.size * scale),
