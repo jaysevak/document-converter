@@ -387,8 +387,9 @@
             
             try {
                 if (file.type === 'application/pdf') {
-                    originalPdfBytes = await file.arrayBuffer();
-                    const loadingTask = pdfjsLib.getDocument({data: originalPdfBytes});
+                    const fileBuffer = await file.arrayBuffer();
+                    originalPdfBytes = fileBuffer.slice(0);
+                    const loadingTask = pdfjsLib.getDocument({data: new Uint8Array(originalPdfBytes)});
                     pdfDoc = await loadingTask.promise;
                     
                     document.getElementById('uploadArea').classList.add('hidden');
