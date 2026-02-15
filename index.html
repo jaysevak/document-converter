@@ -288,17 +288,34 @@
                     <button class="editor-tool-btn" onclick="setEditorTool('draw')" id="tool-draw">
                         <i class="fas fa-pen"></i> Draw
                     </button>
-                    <button class="editor-tool-btn" onclick="setEditorTool('shape')" id="tool-shape">
-                        <i class="fas fa-square"></i> Shape
+                    <button class="editor-tool-btn" onclick="setEditorTool('rectangle')" id="tool-rectangle">
+                        <i class="fas fa-square"></i> Rectangle
+                    </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('circle')" id="tool-circle">
+                        <i class="far fa-circle"></i> Circle
+                    </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('arrow')" id="tool-arrow">
+                        <i class="fas fa-arrow-right"></i> Arrow
                     </button>
                     <button class="editor-tool-btn" onclick="setEditorTool('highlight')" id="tool-highlight">
                         <i class="fas fa-highlighter"></i> Highlight
                     </button>
+                    <button class="editor-tool-btn" onclick="setEditorTool('whiteout')" id="tool-whiteout">
+                        <i class="fas fa-eraser"></i> Whiteout
+                    </button>
+                    <select class="font-select" id="fontSelect" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer;">
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times-Roman">Times</option>
+                        <option value="Courier">Courier</option>
+                    </select>
                     <input type="color" class="color-picker" id="editorColor" value="#000000" title="Color">
-                    <input type="number" class="size-input" id="editorSize" value="14" min="8" max="72" title="Size">
-                    <input type="text" class="text-input" id="editorText" placeholder="Enter text to add..." style="display:none;">
-                    <button class="editor-tool-btn" onclick="clearEditorCanvas()" style="margin-left: auto;">
-                        <i class="fas fa-undo"></i> Clear
+                    <input type="number" class="size-input" id="editorSize" value="16" min="8" max="72" title="Size">
+                    <input type="text" class="text-input" id="editorText" placeholder="Type text here..." style="display:none;">
+                    <button class="editor-tool-btn" onclick="undoEditorLast()" style="margin-left: auto;">
+                        <i class="fas fa-undo"></i> Undo
+                    </button>
+                    <button class="editor-tool-btn" onclick="clearEditorCanvas()">
+                        <i class="fas fa-trash"></i> Clear
                     </button>
                 </div>
                 <div class="editor-canvas-container">
@@ -1121,6 +1138,22 @@
             a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+
+        function undoEditorLast() {
+            if (editorAnnotations.length > 0) {
+                editorAnnotations.pop();
+                initializeEditor();
+                // Redraw remaining annotations
+                editorAnnotations.forEach(ann => {
+                    if (ann.type === 'text') {
+                        editorCtx.font = `${ann.size}px Arial`;
+                        editorCtx.fillStyle = ann.color;
+                        editorCtx.fillText(ann.text, ann.x, ann.y);
+                    }
+                });
+            }
         }
 
         // Drag and drop
