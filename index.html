@@ -460,7 +460,8 @@
             
             try {
                 const { PDFDocument } = PDFLib;
-                const pdfDocLib = await PDFDocument.load(originalPdfBytes);
+                // Create a fresh copy of the buffer for pdf-lib
+                const pdfDocLib = await PDFDocument.load(new Uint8Array(originalPdfBytes));
                 
                 // Tool-specific processing
                 switch(currentTool) {
