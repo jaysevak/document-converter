@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor - PDF Master</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; overflow: hidden; }
+        
+        /* Header */
+        .header { background: #fff; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); position: relative; z-index: 100; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; color: #2563eb; }
+        .logo i { font-size: 24px; }
+        .header-nav { display: flex; gap: 30px; }
+        .header-nav a { color: #64748b; text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+        .header-nav a:hover { color: #2563eb; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn-primary { background: #2563eb; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { background: #1e40af; transform: translateY(-1px); }
+        .btn-secondary { background: #e2e8f0; color: #475569; border: none; padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        
+        /* Main Layout */
+        .main-container { display: flex; height: calc(100vh - 60px); }
+        
+        /* Left Toolbar */
+        .left-toolbar { width: 70px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 5px; }
+        .tool-btn { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: all 0.2s; position: relative; color: #64748b; }
+        .tool-btn:hover { background: #f1f5f9; color: #2563eb; }
+        .tool-btn.active { background: #dbeafe; color: #2563eb; }
+        .tool-btn i { font-size: 20px; }
+        .tool-btn .tooltip { position: absolute; left: 65px; background: #1e293b; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
+        .tool-btn:hover .tooltip { opacity: 1; }
+        .tool-divider { width: 40px; height: 1px; background: #e2e8f0; margin: 10px 0; }
+        
+        /* Workspace */
+        .workspace { flex: 1; display: flex; flex-direction: column; background: #f5f7fa; overflow: hidden; }
+        .top-toolbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 20px; display: flex; align-items: center; gap: 15px; }
+        .tool-group { display: flex; gap: 8px; align-items: center; padding: 0 15px; border-right: 1px solid #e2e8f0; }
+        .tool-group:last-child { border-right: none; }
+        .tool-icon-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; transition: all 0.2s; color: #64748b; border: 1px solid transparent; }
+        .tool-icon-btn:hover { background: #f1f5f9; color: #2563eb; }
+        .tool-icon-btn.active { background: #dbeafe; color: #2563eb; border-color: #2563eb; }
+        .color-input { width: 36px; height: 36px; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; }
+        .size-select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; cursor: pointer; }
+        .font-select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; cursor: pointer; min-width: 120px; }
+        
+        /* Canvas Area */
+        .canvas-area { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 40px; }
+        .canvas-wrapper { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-radius: 4px; position: relative; }
+        #pdfCanvas { display: block; cursor: crosshair; }
+        
+        /* Upload Area */
+        .upload-area { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 400px; }
+        .upload-box { border: 3px dashed #cbd5e1; border-radius: 12px; padding: 60px 40px; background: white; cursor: pointer; transition: all 0.3s; }
+        .upload-box:hover { border-color: #2563eb; background: #f8fafc; }
+        .upload-box i { font-size: 64px; color: #2563eb; margin-bottom: 20px; }
+        .upload-box h3 { font-size: 20px; color: #1e293b; margin-bottom: 10px; }
+        .upload-box p { color: #64748b; font-size: 14px; }
+        .upload-box input { display: none; }
+        
+        /* Right Sidebar */
+        .right-sidebar { width: 280px; background: #fff; border-left: 1px solid #e2e8f0; padding: 20px; overflow-y: auto; display: none; }
+        .right-sidebar.active { display: block; }
+        .sidebar-title { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
+        .property-group { margin-bottom: 20px; }
+        .property-label { font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 500; }
+        .property-input { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; }
+        .property-slider { width: 100%; }
+        .color-palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+        .color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-swatch:hover { transform: scale(1.1); }
+        .color-swatch.active { border-color: #2563eb; }
+        
+        /* Bottom Bar */
+        .bottom-bar { background: #fff; border-top: 1px solid #e2e8f0; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .page-info { font-size: 13px; color: #64748b; }
+        .zoom-controls { display: flex; gap: 10px; align-items: center; }
+        .zoom-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: white; }
+        .zoom-btn:hover { background: #f1f5f9; }
+        .zoom-level { font-size: 13px; color: #64748b; min-width: 50px; text-align: center; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: 600; color: #1e293b; }
+        .modal-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; color: #64748b; }
+        .modal-close:hover { background: #f1f5f9; }
+        .modal-body { margin-bottom: 20px; }
+        .export-option { padding: 15px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 15px; }
+        .export-option:hover { border-color: #2563eb; background: #f8fafc; }
+        .export-option i { font-size: 24px; color: #2563eb; }
+        .export-info h4 { font-size: 15px; color: #1e293b; margin-bottom: 4px; }
+        .export-info p { font-size: 13px; color: #64748b; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-file-pdf"></i>
+            <span>PDF Master</span>
+        </div>
+        <div class="header-nav">
+            <a href="index.html">Home</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#help">Help</a>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="window.location.href='index.html'">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <button class="btn-primary" onclick="openSaveModal()">
+                <i class="fas fa-download"></i> Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Toolbar -->
+        <div class="left-toolbar">
+            <div class="tool-btn" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-file-upload"></i>
+                <span class="tooltip">Upload PDF</span>
+            </div>
+            <div class="tool-divider"></div>
+            <div class="tool-btn active" onclick="selectTool('text')" id="tool-text">
+                <i class="fas fa-font"></i>
+                <span class="tooltip">Add Text</span>
+            </div>
+            <div class="tool-btn" onclick="selectTool('draw')" id="tool-draw">
+                <i class="fas fa-pen"></i>
+                <span class="tooltip">Draw</span>
+            </div>
+            <div class="tool-btn" onclick="selectTool('highlight')" id="tool-highlight">
+                <i class="fas fa-highlighter"></i>
+                <span class="tooltip">Highlight</span>
+            </div>
+            <div class="tool-btn" onclick="selectTool('shapes')" id="tool-shapes">
+                <i class="fas fa-shapes"></i>
+                <span class="tooltip">Shapes</span>
+            </div>
+            <div class="tool-btn" onclick="selectTool('image')" id="tool-image">
+                <i class="fas fa-image"></i>
+                <span class="tooltip">Add Image</span>
+            </div>
+            <div class="tool-btn" onclick="selectTool('whiteout')" id="tool-whiteout">
+                <i class="fas fa-eraser"></i>
+                <span class="tooltip">Whiteout</span>
+            </div>
+            <div class="tool-divider"></div>
+            <div class="tool-btn" onclick="undo()">
+                <i class="fas fa-undo"></i>
+                <span class="tooltip">Undo</span>
+            </div>
+            <div class="tool-btn" onclick="redo()">
+                <i class="fas fa-redo"></i>
+                <span class="tooltip">Redo</span>
+            </div>
+            <div class="tool-btn" onclick="deleteSelected()">
+                <i class="fas fa-trash"></i>
+                <span class="tooltip">Delete</span>
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="workspace">
+            <!-- Top Toolbar -->
+            <div class="top-toolbar" id="topToolbar" style="display: none;">
+                <div class="tool-group">
+                    <div class="tool-icon-btn active" onclick="setShape('rectangle')" id="shape-rect">
+                        <i class="fas fa-square"></i>
+                    </div>
+                    <div class="tool-icon-btn" onclick="setShape('circle')" id="shape-circle">
+                        <i class="far fa-circle"></i>
+                    </div>
+                    <div class="tool-icon-btn" onclick="setShape('arrow')" id="shape-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    <div class="tool-icon-btn" onclick="setShape('line')" id="shape-line">
+                        <i class="fas fa-minus"></i>
+                    </div>
+                </div>
+                <div class="tool-group">
+                    <select class="font-select" id="fontSelect">
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times-Roman">Times New Roman</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Arial">Arial</option>
+                    </select>
+                    <select class="size-select" id="sizeSelect">
+                        <option value="12">12</option>
+                        <option value="14">14</option>
+                        <option value="16" selected>16</option>
+                        <option value="18">18</option>
+                        <option value="24">24</option>
+                        <option value="32">32</option>
+                        <option value="48">48</option>
+                    </select>
+                </div>
+                <div class="tool-group">
+                    <input type="color" class="color-input" id="colorPicker" value="#000000">
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="canvas-area">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Upload PDF to Edit</h3>
+                        <p>Click to browse or drag and drop your PDF file here</p>
+                        <input type="file" id="fileInput" accept=".pdf">
+                    </div>
+                </div>
+                <div class="canvas-wrapper hidden" id="canvasWrapper">
+                    <canvas id="pdfCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div class="bottom-bar">
+                <div class="page-info">
+                    <span id="pageInfo">Page 1 of 1</span> • <span id="fileSize">0 KB</span>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomOut()">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span class="zoom-level" id="zoomLevel">100%</span>
+                    <button class="zoom-btn" onclick="zoomIn()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="right-sidebar" id="rightSidebar">
+            <div class="sidebar-title">Text Properties</div>
+            <div class="property-group">
+                <div class="property-label">Text Content</div>
+                <input type="text" class="property-input" id="textInput" placeholder="Enter text...">
+            </div>
+            <div class="property-group">
+                <div class="property-label">Font Size</div>
+                <input type="range" class="property-slider" id="fontSizeSlider" min="8" max="72" value="16">
+                <span id="fontSizeValue">16px</span>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Color</div>
+                <div class="color-palette">
+                    <div class="color-swatch active" style="background: #000000;" onclick="setColor('#000000')"></div>
+                    <div class="color-swatch" style="background: #ef4444;" onclick="setColor('#ef4444')"></div>
+                    <div class="color-swatch" style="background: #3b82f6;" onclick="setColor('#3b82f6')"></div>
+                    <div class="color-swatch" style="background: #10b981;" onclick="setColor('#10b981')"></div>
+                    <div class="color-swatch" style="background: #f59e0b;" onclick="setColor('#f59e0b')"></div>
+                    <div class="color-swatch" style="background: #8b5cf6;" onclick="setColor('#8b5cf6')"></div>
+                    <div class="color-swatch" style="background: #ec4899;" onclick="setColor('#ec4899')"></div>
+                    <div class="color-swatch" style="background: #06b6d4;" onclick="setColor('#06b6d4')"></div>
+                    <div class="color-swatch" style="background: #84cc16;" onclick="setColor('#84cc16')"></div>
+                    <div class="color-swatch" style="background: #64748b;" onclick="setColor('#64748b')"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Modal -->
+    <div class="modal" id="saveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Save Your PDF</div>
+                <div class="modal-close" onclick="closeSaveModal()">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="export-option" onclick="downloadPDF()">
+                    <i class="fas fa-download"></i>
+                    <div class="export-info">
+                        <h4>Download as PDF</h4>
+                        <p>Save edited PDF to your device</p>
+                    </div>
+                </div>
+                <div class="export-option" onclick="alert('Cloud save coming soon!')">
+                    <i class="fas fa-cloud"></i>
+                    <div class="export-info">
+                        <h4>Save to Cloud</h4>
+                        <p>Store in Google Drive or Dropbox</p>
+                    </div>
+                </div>
+                <div class="export-option" onclick="alert('Export coming soon!')">
+                    <i class="fas fa-file-word"></i>
+                    <div class="export-info">
+                        <h4>Export to Word</h4>
+                        <p>Convert to editable DOCX format</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let currentPage = 1;
+        let canvas = null;
+        let ctx = null;
+        let currentTool = 'text';
+        let annotations = [];
+        let originalPdfBytes = null;
+        let scale = 1.5;
+        let isDrawing = false;
+        let startX, startY;
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            originalPdfBytes = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({data: originalPdfBytes});
+            pdfDoc = await loadingTask.promise;
+            
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('canvasWrapper').classList.remove('hidden');
+            document.getElementById('topToolbar').style.display = 'flex';
+            
+            await renderPage(1);
+            updatePageInfo();
+        });
+
+        async function renderPage(pageNum) {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({scale: scale});
+            
+            canvas = document.getElementById('pdfCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({canvasContext: ctx, viewport: viewport}).promise;
+            
+            canvas.onmousedown = handleMouseDown;
+            canvas.onmousemove = handleMouseMove;
+            canvas.onmouseup = handleMouseUp;
+            
+            redrawAnnotations();
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.left-toolbar .tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tool-' + tool).classList.add('active');
+            
+            if (tool === 'text') {
+                document.getElementById('rightSidebar').classList.add('active');
+            } else {
+                document.getElementById('rightSidebar').classList.remove('active');
+            }
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+
+            if (currentTool === 'text') {
+                const text = document.getElementById('textInput').value || 'Sample Text';
+                const color = document.getElementById('colorPicker').value;
+                const size = parseInt(document.getElementById('sizeSelect').value);
+                const font = document.getElementById('fontSelect').value;
+                
+                annotations.push({type: 'text', x: startX, y: startY, text, color, size, font});
+                redrawAnnotations();
+                isDrawing = false;
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (!isDrawing || currentTool !== 'draw') return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const color = document.getElementById('colorPicker').value;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            annotations.push({type: 'line', x1: startX, y1: startY, x2: x, y2: y, color});
+            startX = x;
+            startY = y;
+        }
+
+        function handleMouseUp(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            const color = document.getElementById('colorPicker').value;
+            
+            if (currentTool === 'shapes') {
+                annotations.push({
+                    type: 'rectangle',
+                    x: Math.min(startX, endX),
+                    y: Math.min(startY, endY),
+                    width: Math.abs(endX - startX),
+                    height: Math.abs(endY - startY),
+                    color
+                });
+                redrawAnnotations();
+            }
+        }
+
+        function redrawAnnotations() {
+            renderPage(currentPage).then(() => {
+                annotations.forEach(ann => {
+                    ctx.save();
+                    if (ann.type === 'text') {
+                        ctx.fillStyle = ann.color;
+                        ctx.font = `${ann.size}px ${ann.font}`;
+                        ctx.fillText(ann.text, ann.x, ann.y);
+                    } else if (ann.type === 'line') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = 3;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(ann.x1, ann.y1);
+                        ctx.lineTo(ann.x2, ann.y2);
+                        ctx.stroke();
+                    } else if (ann.type === 'rectangle') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(ann.x, ann.y, ann.width, ann.height);
+                    }
+                    ctx.restore();
+                });
+            });
+        }
+
+        function undo() {
+            annotations.pop();
+            redrawAnnotations();
+        }
+
+        function redo() {}
+        function deleteSelected() {}
+        function setShape(shape) {}
+        function setColor(color) {
+            document.getElementById('colorPicker').value = color;
+        }
+
+        function zoomIn() {
+            scale += 0.2;
+            renderPage(currentPage);
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+        }
+
+        function zoomOut() {
+            if (scale > 0.5) {
+                scale -= 0.2;
+                renderPage(currentPage);
+                document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+            }
+        }
+
+        function updatePageInfo() {
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${pdfDoc.numPages}`;
+            document.getElementById('fileSize').textContent = Math.round(originalPdfBytes.byteLength / 1024) + ' KB';
+        }
+
+        function openSaveModal() {
+            document.getElementById('saveModal').classList.add('active');
+        }
+
+        function closeSaveModal() {
+            document.getElementById('saveModal').classList.remove('active');
+        }
+
+        async function downloadPDF() {
+            const { PDFDocument, rgb } = PDFLib;
+            const pdfDocLib = await PDFDocument.load(originalPdfBytes);
+            const pages = pdfDocLib.getPages();
+            const page = pages[currentPage - 1];
+            const { width, height } = page.getSize();
+            const canvasScale = canvas.width / width;
+            
+            annotations.forEach(ann => {
+                if (ann.type === 'text') {
+                    const hexColor = ann.color;
+                    const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                    const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                    const b = parseInt(hexColor.substr(5,2), 16) / 255;
+                    
+                    page.drawText(ann.text, {
+                        x: ann.x / canvasScale,
+                        y: height - (ann.y / canvasScale),
+                        size: ann.size / canvasScale,
+                        color: rgb(r, g, b)
+                    });
+                }
+            });
+            
+            const pdfBytes = await pdfDocLib.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            closeSaveModal();
+        }
+
+        document.getElementById('fontSizeSlider').addEventListener('input', (e) => {
+            document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+            document.getElementById('sizeSelect').value = e.target.value;
+        });
+    </script>
+</body>
+</html>
