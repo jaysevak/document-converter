@@ -433,7 +433,8 @@
             
             try {
                 const { PDFDocument } = PDFLib;
-                const pdfDocLib = await PDFDocument.load(new Uint8Array(originalPdfBytes));
+                // Create fresh Uint8Array from the stored buffer
+                const pdfDocLib = await PDFDocument.load(new Uint8Array(originalPdfBytes).slice());
                 
                 if (currentTool === 'compress') {
                     pdfDocLib.setTitle('');
