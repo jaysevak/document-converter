@@ -236,7 +236,7 @@
             currentPage = pageNum;
             document.getElementById('pageInfo').textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
             
-            redrawAnnotations();
+            drawAnnotations();
         }
 
         function setupCanvas() {
@@ -310,14 +310,14 @@
                     height: Math.abs(endY - startY),
                     color: color
                 });
-                redrawAnnotations();
+                drawAnnotations();
             } else if (currentTool === 'circle') {
                 const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
                 annotations.push({type: 'circle', x: startX, y: startY, radius: radius, color: color});
-                redrawAnnotations();
+                drawAnnotations();
             } else if (currentTool === 'arrow') {
                 annotations.push({type: 'arrow', x1: startX, y1: startY, x2: endX, y2: endY, color: color});
-                redrawAnnotations();
+                drawAnnotations();
             } else if (currentTool === 'whiteout') {
                 annotations.push({
                     type: 'whiteout',
@@ -326,7 +326,7 @@
                     width: Math.abs(endX - startX),
                     height: Math.abs(endY - startY)
                 });
-                redrawAnnotations();
+                drawAnnotations();
             }
         }
 
@@ -339,65 +339,63 @@
             const font = document.getElementById('fontSelect').value;
             
             annotations.push({type: 'text', x: textClickX, y: textClickY, text: text, color: color, size: size, font: font});
-            redrawAnnotations();
+            drawAnnotations();
             
             document.getElementById('textInputPopup').classList.remove('active');
             document.getElementById('textInput').value = '';
         }
 
-        function redrawAnnotations() {
-            renderPage(currentPage).then(() => {
-                annotations.forEach(ann => {
-                    ctx.save();
-                    if (ann.type === 'text') {
-                        ctx.fillStyle = ann.color;
-                        ctx.font = `${ann.size}px ${ann.font}`;
-                        ctx.fillText(ann.text, ann.x, ann.y);
-                    } else if (ann.type === 'line') {
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = ann.width;
-                        ctx.lineCap = 'round';
-                        ctx.beginPath();
-                        ctx.moveTo(ann.x1, ann.y1);
-                        ctx.lineTo(ann.x2, ann.y2);
-                        ctx.stroke();
-                    } else if (ann.type === 'rectangle') {
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(ann.x, ann.y, ann.width, ann.height);
-                    } else if (ann.type === 'circle') {
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(ann.x, ann.y, ann.radius, 0, 2 * Math.PI);
-                        ctx.stroke();
-                    } else if (ann.type === 'arrow') {
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(ann.x1, ann.y1);
-                        ctx.lineTo(ann.x2, ann.y2);
-                        ctx.stroke();
-                        
-                        const angle = Math.atan2(ann.y2 - ann.y1, ann.x2 - ann.x1);
-                        ctx.beginPath();
-                        ctx.moveTo(ann.x2, ann.y2);
-                        ctx.lineTo(ann.x2 - 15 * Math.cos(angle - Math.PI / 6), ann.y2 - 15 * Math.sin(angle - Math.PI / 6));
-                        ctx.moveTo(ann.x2, ann.y2);
-                        ctx.lineTo(ann.x2 - 15 * Math.cos(angle + Math.PI / 6), ann.y2 - 15 * Math.sin(angle + Math.PI / 6));
-                        ctx.stroke();
-                    } else if (ann.type === 'whiteout') {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(ann.x, ann.y, ann.width, ann.height);
-                    }
-                    ctx.restore();
-                });
+        function drawAnnotations() {
+            annotations.forEach(ann => {
+                ctx.save();
+                if (ann.type === 'text') {
+                    ctx.fillStyle = ann.color;
+                    ctx.font = `${ann.size}px ${ann.font}`;
+                    ctx.fillText(ann.text, ann.x, ann.y);
+                } else if (ann.type === 'line') {
+                    ctx.strokeStyle = ann.color;
+                    ctx.lineWidth = ann.width;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(ann.x1, ann.y1);
+                    ctx.lineTo(ann.x2, ann.y2);
+                    ctx.stroke();
+                } else if (ann.type === 'rectangle') {
+                    ctx.strokeStyle = ann.color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(ann.x, ann.y, ann.width, ann.height);
+                } else if (ann.type === 'circle') {
+                    ctx.strokeStyle = ann.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(ann.x, ann.y, ann.radius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                } else if (ann.type === 'arrow') {
+                    ctx.strokeStyle = ann.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(ann.x1, ann.y1);
+                    ctx.lineTo(ann.x2, ann.y2);
+                    ctx.stroke();
+                    
+                    const angle = Math.atan2(ann.y2 - ann.y1, ann.x2 - ann.x1);
+                    ctx.beginPath();
+                    ctx.moveTo(ann.x2, ann.y2);
+                    ctx.lineTo(ann.x2 - 15 * Math.cos(angle - Math.PI / 6), ann.y2 - 15 * Math.sin(angle - Math.PI / 6));
+                    ctx.moveTo(ann.x2, ann.y2);
+                    ctx.lineTo(ann.x2 - 15 * Math.cos(angle + Math.PI / 6), ann.y2 - 15 * Math.sin(angle + Math.PI / 6));
+                    ctx.stroke();
+                } else if (ann.type === 'whiteout') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(ann.x, ann.y, ann.width, ann.height);
+                }
+                ctx.restore();
             });
         }
 
         function undo() {
             annotations.pop();
-            redrawAnnotations();
+            renderPage(currentPage);
         }
 
         function prevPage() {
