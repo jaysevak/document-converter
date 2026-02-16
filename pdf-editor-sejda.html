@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit PDF - PDF Master</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; overflow: hidden; }
+        
+        .header { background: #fff; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .logo { font-size: 20px; font-weight: 700; color: #d32f2f; display: flex; align-items: center; gap: 10px; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn { padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #d32f2f; color: white; }
+        .btn-primary:hover { background: #c62828; }
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        
+        .toolbar { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 10px 20px; display: none; }
+        .toolbar.active { display: flex; }
+        .toolbar-group { display: flex; gap: 5px; padding: 0 15px; border-right: 1px solid #e0e0e0; }
+        .toolbar-group:last-child { border-right: none; }
+        .tool-btn { padding: 8px 16px; background: white; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .tool-btn:hover { background: #f5f5f5; border-color: #d32f2f; }
+        .tool-btn.active { background: #d32f2f; color: white; border-color: #d32f2f; }
+        .tool-btn i { font-size: 14px; }
+        
+        .workspace { height: calc(100vh - 120px); display: flex; }
+        .upload-area { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .upload-box { background: white; border: 3px dashed #ccc; border-radius: 12px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-box:hover { border-color: #d32f2f; background: #fef7f7; }
+        .upload-box i { font-size: 64px; color: #d32f2f; margin-bottom: 20px; }
+        .upload-box h2 { font-size: 22px; color: #333; margin-bottom: 10px; }
+        .upload-box input { display: none; }
+        
+        .editor-area { flex: 1; display: none; flex-direction: column; align-items: center; padding: 20px; overflow: auto; }
+        .editor-area.active { display: flex; }
+        .canvas-container { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative; }
+        #pdfCanvas { display: block; cursor: crosshair; }
+        
+        .bottom-bar { background: #fff; border-top: 1px solid #e0e0e0; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .page-nav { display: flex; gap: 10px; align-items: center; }
+        .nav-btn { width: 32px; height: 32px; border: 1px solid #e0e0e0; border-radius: 4px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:hover { background: #f5f5f5; }
+        .zoom-controls { display: flex; gap: 10px; align-items: center; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 400px; text-align: center; }
+        .modal-icon { font-size: 48px; margin-bottom: 15px; }
+        .modal-icon.loading { color: #d32f2f; animation: spin 1s linear infinite; }
+        .modal-icon.success { color: #4caf50; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .text-input-popup { position: absolute; background: white; border: 2px solid #d32f2f; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; z-index: 100; }
+        .text-input-popup.active { display: block; }
+        .text-input-popup input { padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; width: 250px; font-size: 14px; }
+        .text-input-popup button { margin-top: 8px; padding: 6px 16px; background: #d32f2f; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-file-pdf"></i>
+            <span>PDF Master - Edit PDF</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="window.location.href='index.html'">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <button class="btn btn-primary" id="applyBtn" onclick="applyChanges()" style="display:none;">
+                Apply changes
+            </button>
+        </div>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+        <div class="toolbar-group">
+            <button class="tool-btn active" onclick="selectTool('text')" id="tool-text">
+                <i class="fas fa-font"></i> Text
+            </button>
+            <button class="tool-btn" onclick="selectTool('image')" id="tool-image">
+                <i class="fas fa-image"></i> Images
+            </button>
+            <button class="tool-btn" onclick="selectTool('sign')" id="tool-sign">
+                <i class="fas fa-signature"></i> Sign
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <button class="tool-btn" onclick="selectTool('whiteout')" id="tool-whiteout">
+                <i class="fas fa-square"></i> Whiteout
+            </button>
+            <button class="tool-btn" onclick="selectTool('highlight')" id="tool-highlight">
+                <i class="fas fa-highlighter"></i> Annotate
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <button class="tool-btn" onclick="selectTool('rectangle')" id="tool-rectangle">
+                <i class="far fa-square"></i> Rectangle
+            </button>
+            <button class="tool-btn" onclick="selectTool('circle')" id="tool-circle">
+                <i class="far fa-circle"></i> Circle
+            </button>
+            <button class="tool-btn" onclick="selectTool('arrow')" id="tool-arrow">
+                <i class="fas fa-arrow-right"></i> Arrow
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <select id="fontSelect" style="padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;">
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times-Roman">Times New Roman</option>
+                <option value="Courier">Courier</option>
+            </select>
+            <select id="fontSize" style="padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;">
+                <option value="12">12</option>
+                <option value="14">14</option>
+                <option value="16" selected>16</option>
+                <option value="18">18</option>
+                <option value="24">24</option>
+                <option value="32">32</option>
+            </select>
+            <input type="color" id="colorPicker" value="#000000" style="width: 40px; height: 36px; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;">
+        </div>
+        <div class="toolbar-group" style="margin-left: auto;">
+            <button class="tool-btn" onclick="undo()">
+                <i class="fas fa-undo"></i> Undo
+            </button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h2>Upload PDF file</h2>
+                <p style="color: #666; margin-bottom: 20px;">or drop PDF here</p>
+                <button class="btn btn-primary">Select PDF file</button>
+                <input type="file" id="fileInput" accept=".pdf">
+            </div>
+        </div>
+
+        <div class="editor-area" id="editorArea">
+            <div class="canvas-container">
+                <canvas id="pdfCanvas"></canvas>
+                <div class="text-input-popup" id="textInputPopup">
+                    <input type="text" id="textInput" placeholder="Enter text...">
+                    <button onclick="addTextToCanvas()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-bar">
+        <div class="page-nav">
+            <button class="nav-btn" onclick="prevPage()"><i class="fas fa-chevron-left"></i></button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button class="nav-btn" onclick="nextPage()"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="zoom-controls">
+            <button class="nav-btn" onclick="zoomOut()"><i class="fas fa-minus"></i></button>
+            <span id="zoomLevel">100%</span>
+            <button class="nav-btn" onclick="zoomIn()"><i class="fas fa-plus"></i></button>
+        </div>
+    </div>
+
+    <div class="modal" id="loadingModal">
+        <div class="modal-content">
+            <i class="fas fa-spinner modal-icon loading"></i>
+            <h3>Processing PDF...</h3>
+        </div>
+    </div>
+
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <i class="fas fa-check-circle modal-icon success"></i>
+            <h3>Success!</h3>
+            <p style="margin: 15px 0;">Your PDF has been edited</p>
+            <button class="btn btn-primary" onclick="downloadPDF()">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let currentPage = 1;
+        let scale = 1.5;
+        let canvas = null;
+        let ctx = null;
+        let currentTool = 'text';
+        let annotations = [];
+        let originalPdfBytes = null;
+        let isDrawing = false;
+        let startX, startY;
+        let textClickX, textClickY;
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const fileBuffer = await file.arrayBuffer();
+                originalPdfBytes = fileBuffer.slice(0);
+                const loadingTask = pdfjsLib.getDocument({data: new Uint8Array(originalPdfBytes)});
+                pdfDoc = await loadingTask.promise;
+                
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('editorArea').classList.add('active');
+                document.getElementById('toolbar').classList.add('active');
+                document.getElementById('applyBtn').style.display = 'block';
+                
+                await renderPage(1);
+                setupCanvas();
+            } catch (error) {
+                alert('Error loading PDF: ' + error.message);
+            }
+        });
+
+        async function renderPage(pageNum) {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({scale: scale});
+            
+            canvas = document.getElementById('pdfCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({canvasContext: ctx, viewport: viewport}).promise;
+            currentPage = pageNum;
+            document.getElementById('pageInfo').textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+            
+            redrawAnnotations();
+        }
+
+        function setupCanvas() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tool-' + tool).classList.add('active');
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+
+            if (currentTool === 'text') {
+                textClickX = startX;
+                textClickY = startY;
+                const popup = document.getElementById('textInputPopup');
+                popup.style.left = e.clientX + 'px';
+                popup.style.top = e.clientY + 'px';
+                popup.classList.add('active');
+                document.getElementById('textInput').focus();
+                isDrawing = false;
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            if (currentTool === 'highlight') {
+                const color = document.getElementById('colorPicker').value;
+                ctx.strokeStyle = color + '80';
+                ctx.lineWidth = 20;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+                
+                annotations.push({type: 'line', x1: startX, y1: startY, x2: currentX, y2: currentY, color: color + '80', width: 20});
+                startX = currentX;
+                startY = currentY;
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            const color = document.getElementById('colorPicker').value;
+            
+            if (currentTool === 'rectangle') {
+                annotations.push({
+                    type: 'rectangle',
+                    x: Math.min(startX, endX),
+                    y: Math.min(startY, endY),
+                    width: Math.abs(endX - startX),
+                    height: Math.abs(endY - startY),
+                    color: color
+                });
+                redrawAnnotations();
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                annotations.push({type: 'circle', x: startX, y: startY, radius: radius, color: color});
+                redrawAnnotations();
+            } else if (currentTool === 'arrow') {
+                annotations.push({type: 'arrow', x1: startX, y1: startY, x2: endX, y2: endY, color: color});
+                redrawAnnotations();
+            } else if (currentTool === 'whiteout') {
+                annotations.push({
+                    type: 'whiteout',
+                    x: Math.min(startX, endX),
+                    y: Math.min(startY, endY),
+                    width: Math.abs(endX - startX),
+                    height: Math.abs(endY - startY)
+                });
+                redrawAnnotations();
+            }
+        }
+
+        function addTextToCanvas() {
+            const text = document.getElementById('textInput').value;
+            if (!text) return;
+            
+            const color = document.getElementById('colorPicker').value;
+            const size = parseInt(document.getElementById('fontSize').value);
+            const font = document.getElementById('fontSelect').value;
+            
+            annotations.push({type: 'text', x: textClickX, y: textClickY, text: text, color: color, size: size, font: font});
+            redrawAnnotations();
+            
+            document.getElementById('textInputPopup').classList.remove('active');
+            document.getElementById('textInput').value = '';
+        }
+
+        function redrawAnnotations() {
+            renderPage(currentPage).then(() => {
+                annotations.forEach(ann => {
+                    ctx.save();
+                    if (ann.type === 'text') {
+                        ctx.fillStyle = ann.color;
+                        ctx.font = `${ann.size}px ${ann.font}`;
+                        ctx.fillText(ann.text, ann.x, ann.y);
+                    } else if (ann.type === 'line') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = ann.width;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(ann.x1, ann.y1);
+                        ctx.lineTo(ann.x2, ann.y2);
+                        ctx.stroke();
+                    } else if (ann.type === 'rectangle') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(ann.x, ann.y, ann.width, ann.height);
+                    } else if (ann.type === 'circle') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(ann.x, ann.y, ann.radius, 0, 2 * Math.PI);
+                        ctx.stroke();
+                    } else if (ann.type === 'arrow') {
+                        ctx.strokeStyle = ann.color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(ann.x1, ann.y1);
+                        ctx.lineTo(ann.x2, ann.y2);
+                        ctx.stroke();
+                        
+                        const angle = Math.atan2(ann.y2 - ann.y1, ann.x2 - ann.x1);
+                        ctx.beginPath();
+                        ctx.moveTo(ann.x2, ann.y2);
+                        ctx.lineTo(ann.x2 - 15 * Math.cos(angle - Math.PI / 6), ann.y2 - 15 * Math.sin(angle - Math.PI / 6));
+                        ctx.moveTo(ann.x2, ann.y2);
+                        ctx.lineTo(ann.x2 - 15 * Math.cos(angle + Math.PI / 6), ann.y2 - 15 * Math.sin(angle + Math.PI / 6));
+                        ctx.stroke();
+                    } else if (ann.type === 'whiteout') {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(ann.x, ann.y, ann.width, ann.height);
+                    }
+                    ctx.restore();
+                });
+            });
+        }
+
+        function undo() {
+            annotations.pop();
+            redrawAnnotations();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) renderPage(currentPage - 1);
+        }
+
+        function nextPage() {
+            if (currentPage < pdfDoc.numPages) renderPage(currentPage + 1);
+        }
+
+        function zoomIn() {
+            scale += 0.2;
+            renderPage(currentPage);
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+        }
+
+        function zoomOut() {
+            if (scale > 0.5) {
+                scale -= 0.2;
+                renderPage(currentPage);
+                document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+            }
+        }
+
+        async function applyChanges() {
+            document.getElementById('loadingModal').classList.add('active');
+            
+            try {
+                const { PDFDocument, rgb } = PDFLib;
+                const pdfDocLib = await PDFDocument.load(new Uint8Array(originalPdfBytes));
+                const pages = pdfDocLib.getPages();
+                const page = pages[currentPage - 1];
+                const { width, height } = page.getSize();
+                const canvasScale = canvas.width / width;
+                
+                annotations.forEach(ann => {
+                    if (ann.type === 'text') {
+                        const hexColor = ann.color;
+                        const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                        const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                        const b = parseInt(hexColor.substr(5,2), 16) / 255;
+                        
+                        page.drawText(ann.text, {
+                            x: ann.x / canvasScale,
+                            y: height - (ann.y / canvasScale),
+                            size: ann.size / canvasScale,
+                            color: rgb(r, g, b)
+                        });
+                    } else if (ann.type === 'rectangle') {
+                        const hexColor = ann.color;
+                        const r = parseInt(hexColor.substr(1,2), 16) / 255;
+                        const g = parseInt(hexColor.substr(3,2), 16) / 255;
+                        const b = parseInt(hexColor.substr(5,2), 16) / 255;
+                        
+                        page.drawRectangle({
+                            x: ann.x / canvasScale,
+                            y: height - (ann.y / canvasScale) - (ann.height / canvasScale),
+                            width: ann.width / canvasScale,
+                            height: ann.height / canvasScale,
+                            borderColor: rgb(r, g, b),
+                            borderWidth: 2
+                        });
+                    } else if (ann.type === 'whiteout') {
+                        page.drawRectangle({
+                            x: ann.x / canvasScale,
+                            y: height - (ann.y / canvasScale) - (ann.height / canvasScale),
+                            width: ann.width / canvasScale,
+                            height: ann.height / canvasScale,
+                            color: rgb(1, 1, 1)
+                        });
+                    }
+                });
+                
+                window.processedPdfBytes = await pdfDocLib.save();
+                
+                document.getElementById('loadingModal').classList.remove('active');
+                document.getElementById('successModal').classList.add('active');
+            } catch (error) {
+                document.getElementById('loadingModal').classList.remove('active');
+                alert('Error processing PDF: ' + error.message);
+            }
+        }
+
+        function downloadPDF() {
+            const blob = new Blob([window.processedPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            document.getElementById('successModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
