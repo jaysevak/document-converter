@@ -205,22 +205,38 @@ let drawEdits={};   // {page:[{type,x1,y1,x2,y2,color,width,opacity}]}
 let overlayEdits={}; // {page:[{type:'image'|'sig',x,y,w,h,dataUrl}]}
 
 // ---- FILE LOAD ----
-document.getElementById('fi').addEventListener('change',async e=>{
-  const file=e.target.files[0]; if(!file)return;
+async function loadFile(file){
+  if(!file) return;
+  if(!file.name.match(/\.pdf$/i)){alert('Please select a PDF file.');return;}
+  if(file.size>100*1024*1024){alert('File too large. Max 100MB.');return;}
   showModal('Loading PDF...');
-  const buf=await file.arrayBuffer();
-  originalBytes=buf.slice(0);
-  const pdfJsCopy=buf.slice(0);
-  pdfJsDoc=await pdfjsLib.getDocument({data:new Uint8Array(pdfJsCopy)}).promise;
-  document.getElementById('uploadArea').style.display='none';
-  document.getElementById('editorArea').classList.add('show');
-  document.getElementById('toolbar').classList.add('show');
-  document.getElementById('bottomBar').classList.add('show');
-  document.getElementById('applyBtn').style.display='';
-  document.getElementById('pgTotal').textContent=pdfJsDoc.numPages;
-  await renderPage(1);
-  hideModal();
-});
+  try{
+    const buf=await file.arrayBuffer();
+    originalBytes=buf.slice(0);
+    const pdfJsCopy=buf.slice(0);
+    pdfJsDoc=await pdfjsLib.getDocument({data:new Uint8Array(pdfJsCopy)}).promise;
+    document.getElementById('uploadArea').style.display='none';
+    document.getElementById('editorArea').classList.add('show');
+    document.getElementById('toolbar').classList.add('show');
+    document.getElementById('bottomBar').classList.add('show');
+    document.getElementById('applyBtn').style.display='';
+    document.getElementById('pgTotal').textContent=pdfJsDoc.numPages;
+    await renderPage(1);
+    hideModal();
+  }catch(err){
+    hideModal();
+    alert('Failed to load PDF: '+(err.message||err)+'\n\nMake sure the file is a valid PDF.');
+    console.error(err);
+  }
+}
+
+document.getElementById('fi').addEventListener('change',e=>loadFile(e.target.files[0]));
+
+// Drag & drop on upload box
+const uploadBox=document.querySelector('.upload-box');
+uploadBox.addEventListener('dragover',e=>{e.preventDefault();uploadBox.style.borderColor='#d32f2f';uploadBox.style.background='#fff5f5';});
+uploadBox.addEventListener('dragleave',()=>{uploadBox.style.borderColor='';uploadBox.style.background='';});
+uploadBox.addEventListener('drop',e=>{e.preventDefault();uploadBox.style.borderColor='';uploadBox.style.background='';loadFile(e.dataTransfer.files[0]);});
 
 // ---- RENDER ----
 async function renderPage(n){
