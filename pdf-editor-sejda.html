@@ -576,23 +576,6 @@ document.getElementById('imgInput').addEventListener('change',e=>{
 
 // ---- SIGNATURE ----
 let sigDrawing=false, sigCtx=null;
-function openSigModal(){
-  document.getElementById('sigModal').classList.add('show');
-  const c=document.getElementById('sigCanvas');
-  sigCtx=c.getContext('2d');
-  sigCtx.clearRect(0,0,c.width,c.height);
-  sigCtx.strokeStyle='#000'; sigCtx.lineWidth=2; sigCtx.lineCap='round';
-  c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
-  c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
-  c.onmouseup=()=>sigDrawing=false;
-  c.onmouseleave=()=>sigDrawing=false;
-  // touch
-  c.ontouchstart=e=>{e.preventDefault();sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);};
-  c.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);sigCtx.stroke();};
-  c.ontouchend=()=>sigDrawing=false;
-}
-function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
-function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
 // ---- SIGNATURE: click spot first, then draw ----
 let pendingSigPos=null;
 let pendingSigDataUrl=null;
