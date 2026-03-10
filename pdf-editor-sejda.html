@@ -615,13 +615,6 @@ function placeSig(){
   setMode('text');
   hideHint();
 }
-  c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
-  c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
-  c.onmouseup=()=>sigDrawing=false; c.onmouseleave=()=>sigDrawing=false;
-  c.ontouchstart=e=>{e.preventDefault();sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);};
-  c.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);sigCtx.stroke();};
-  c.ontouchend=()=>sigDrawing=false;
-}
 function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
 function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
 function placeSig(){
