@@ -60,12 +60,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ts.edited{color:#000;background:#fff}
 
 /* Overlay elements (images, shapes placed by user) */
-.ov-el{position:absolute;cursor:move;border:2px solid transparent;transition:border .15s}
+.ov-el{position:absolute;cursor:move;border:2px solid transparent;transition:border .15s;pointer-events:all}
 .ov-el:hover{border-color:#4285f4}
 .ov-el.selected{border-color:#d32f2f!important}
 .ov-el .del-btn{position:absolute;top:-10px;right:-10px;width:20px;height:20px;background:#d32f2f;color:#fff;border-radius:50%;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:20}
 .ov-el:hover .del-btn,.ov-el.selected .del-btn{display:flex}
-.ov-el .resize-handle{position:absolute;bottom:-5px;right:-5px;width:12px;height:12px;background:#d32f2f;border-radius:2px;cursor:se-resize;display:none}
+.ov-el .resize-handle{position:absolute;bottom:-7px;right:-7px;width:16px;height:16px;background:#d32f2f;border-radius:3px;cursor:se-resize;display:none;border:2px solid #fff}
 .ov-el:hover .resize-handle,.ov-el.selected .resize-handle{display:block}
 
 /* Signature canvas */
