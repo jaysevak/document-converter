@@ -156,8 +156,9 @@ document.getElementById('fi').addEventListener('change',async e=>{
   const file=e.target.files[0]; if(!file)return;
   showModal('Loading PDF...');
   const buf=await file.arrayBuffer();
-  originalBytes=buf.slice(0);
-  pdfJsDoc=await pdfjsLib.getDocument({data:new Uint8Array(originalBytes)}).promise;
+  originalBytes=buf.slice(0);          // clean copy for pdf-lib (never touched by pdf.js)
+  const pdfJsCopy=buf.slice(0);        // separate copy for pdf.js (it will detach this)
+  pdfJsDoc=await pdfjsLib.getDocument({data:new Uint8Array(pdfJsCopy)}).promise;
   document.getElementById('uploadArea').style.display='none';
   document.getElementById('editorArea').classList.add('show');
   document.getElementById('toolbar').classList.add('show');
@@ -327,7 +328,7 @@ async function applyChanges(){
   showModal('Saving PDF...');
   try{
     const {PDFDocument,rgb,StandardFonts}=PDFLib;
-    const doc=await PDFDocument.load(new Uint8Array(originalBytes).slice(),{ignoreEncryption:true});
+    const doc=await PDFDocument.load(new Uint8Array(originalBytes.slice(0)),{ignoreEncryption:true});
     const fontMap={'Helvetica':StandardFonts.Helvetica,'Times-Roman':StandardFonts.TimesRoman,'Courier':StandardFonts.Courier};
 
     for(const [pg,pgEdits] of Object.entries(edits)){
