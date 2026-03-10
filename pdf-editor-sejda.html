@@ -254,7 +254,7 @@ async function renderPage(n){
   await buildTextLayer(page,vp);
   redrawShapes();
   rebuildOverlays();
-  await detectPdfImages(page,vp);
+  try{ await detectPdfImages(page,vp); }catch(e){ console.warn('Image detection skipped:',e.message); }
 }
 
 // ---- TEXT LAYER ----
@@ -318,6 +318,7 @@ async function detectPdfImages(page,vp){
   layer.style.cssText=`width:${vp.width}px;height:${vp.height}px;position:absolute;top:0;left:0;z-index:5;pointer-events:${mode==='remove-img'?'all':'none'}`;
   const opList=await page.getOperatorList();
   const OPS=pdfjsLib.OPS;
+  if(!OPS) return;
   // Track CTM stack
   let ctm=[1,0,0,1,0,0];
   const stack=[];
