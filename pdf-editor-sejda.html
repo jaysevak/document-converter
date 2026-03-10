@@ -221,7 +221,7 @@ async function loadFile(file){
     document.getElementById('bottomBar').classList.add('show');
     document.getElementById('applyBtn').style.display='';
     document.getElementById('pgTotal').textContent=pdfJsDoc.numPages;
-    await renderPage(1);
+    try{ await renderPage(1); }catch(e){ console.error('Render error:',e); }
     hideModal();
   }catch(err){
     hideModal();
@@ -230,7 +230,11 @@ async function loadFile(file){
   }
 }
 
-document.getElementById('fi').addEventListener('change',e=>loadFile(e.target.files[0]));
+document.getElementById('fi').addEventListener('change',e=>{
+  const file=e.target.files[0];
+  e.target.value=''; // reset so same file can be re-selected
+  loadFile(file);
+});
 
 // Drag & drop on upload box
 const uploadBox=document.querySelector('.upload-box');
@@ -251,9 +255,9 @@ async function renderPage(n){
   document.getElementById('textLayer').style.cssText=`width:${vp.width}px;height:${vp.height}px`;
   document.getElementById('overlayLayer').style.cssText=`width:${vp.width}px;height:${vp.height}px`;
   await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-  await buildTextLayer(page,vp);
-  redrawShapes();
-  rebuildOverlays();
+  try{ await buildTextLayer(page,vp); }catch(e){ console.warn('Text layer skipped:',e.message); }
+  try{ redrawShapes(); }catch(e){}
+  try{ rebuildOverlays(); }catch(e){}
   try{ await detectPdfImages(page,vp); }catch(e){ console.warn('Image detection skipped:',e.message); }
 }
 
