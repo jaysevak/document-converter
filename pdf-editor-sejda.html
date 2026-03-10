@@ -46,7 +46,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #pdfCanvas{display:block;position:relative;z-index:1}
 #textLayer{position:absolute;top:0;left:0;z-index:2;pointer-events:none}
 #drawCanvas{position:absolute;top:0;left:0;z-index:3;pointer-events:none}
-#overlayLayer{position:absolute;top:0;left:0;z-index:4;pointer-events:none}
+#imgDetectLayer{position:absolute;top:0;left:0;z-index:5;pointer-events:none}
+.img-detect-box{position:absolute;border:2px dashed rgba(211,47,47,.5);border-radius:3px;cursor:pointer;transition:all .2s;background:rgba(211,47,47,.05)}
+.img-detect-box:hover{border-color:#d32f2f;background:rgba(211,47,47,.15)}
+.img-detect-box .img-del{position:absolute;top:-10px;right:-10px;width:22px;height:22px;background:#d32f2f;color:#fff;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700}
+#hintBar{position:fixed;top:120px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:400;display:none;align-items:center;gap:10px}
+#hintBar.show{display:flex}
 
 /* Text spans */
 .ts{position:absolute;color:transparent;white-space:pre;cursor:text;pointer-events:all;border-radius:2px;outline:none;line-height:1}
@@ -114,7 +119,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="tbtn" id="tbtn-image" onclick="triggerImageUpload()"><i class="fas fa-image"></i> Add Image</button>
   <input type="file" id="imgInput" accept="image/*" style="display:none">
   <!-- Signature -->
-  <button class="tbtn" id="tbtn-sign" onclick="openSigModal()"><i class="fas fa-signature"></i> Signature</button>
+  <button class="tbtn" id="tbtn-sign" onclick="setMode('sign')"><i class="fas fa-signature"></i> Signature</button>
+  <button class="tbtn" id="tbtn-remove-img" onclick="setMode('remove-img')" title="Click on an existing image in the PDF to remove it"><i class="fas fa-image"></i> Remove Image</button>
   <div class="tsep"></div>
   <!-- Shapes -->
   <button class="tbtn" id="tbtn-rect" onclick="setMode('rect')"><i class="fas fa-square"></i> Rectangle</button>
@@ -151,6 +157,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="textLayer"></div>
       <canvas id="drawCanvas"></canvas>
       <div id="overlayLayer"></div>
+      <div id="imgDetectLayer"></div>
     </div>
   </div>
 </div>
@@ -167,6 +174,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="nav-btn" onclick="changeZoom(0.25)"><i class="fas fa-plus"></i></button>
   </div>
 </div>
+
+<!-- Hint Bar -->
+<div id="hintBar"><i class="fas fa-info-circle"></i><span id="hintMsg"></span><button class="btn btn-gray" style="padding:4px 10px;font-size:12px" onclick="cancelHintMode()">Cancel</button></div>
 
 <!-- Signature Modal -->
 <div id="sigModal">
@@ -228,6 +238,7 @@ async function renderPage(n){
   await buildTextLayer(page,vp);
   redrawShapes();
   rebuildOverlays();
+  await detectPdfImages(page,vp);
 }
 
 // ---- TEXT LAYER ----
@@ -283,7 +294,71 @@ function addNewTextSpan(ed){
   return span;
 }
 
-// ---- DRAW SHAPES ----
+// ---- DETECT EXISTING PDF IMAGES ----
+let detectedImages={}; // {page:[{x,y,w,h}]} in canvas coords
+async function detectPdfImages(page,vp){
+  const layer=document.getElementById('imgDetectLayer');
+  layer.innerHTML='';
+  layer.style.cssText=`width:${vp.width}px;height:${vp.height}px;position:absolute;top:0;left:0;z-index:5;pointer-events:${mode==='remove-img'?'all':'none'}`;
+  const opList=await page.getOperatorList();
+  const OPS=pdfjsLib.OPS;
+  // Track CTM stack
+  let ctm=[1,0,0,1,0,0];
+  const stack=[];
+  const imgs=[];
+  for(let i=0;i<opList.fnArray.length;i++){
+    const fn=opList.fnArray[i];
+    const args=opList.argsArray[i];
+    if(fn===OPS.save){stack.push([...ctm]);}
+    else if(fn===OPS.restore){if(stack.length)ctm=stack.pop();}
+    else if(fn===OPS.transform){
+      const [a,b,c,d,e,f]=args;
+      // multiply ctm * [a,b,c,d,e,f]
+      const [ca,cb,cc,cd,ce,cf]=ctm;
+      ctm=[ca*a+cc*b, cb*a+cd*b, ca*c+cc*d, cb*c+cd*d, ca*e+cc*f+ce, cb*e+cd*f+cf];
+    }
+    else if(fn===OPS.paintImageXObject||fn===OPS.paintInlineImageXObject||fn===OPS.paintImageMaskXObject){
+      // image is drawn in unit square [0,1]x[0,1] transformed by ctm
+      // corners: (0,0),(1,0),(1,1),(0,1)
+      const corners=[[0,0],[1,0],[1,1],[0,1]].map(([px,py])=>{
+        return [ctm[0]*px+ctm[2]*py+ctm[4], ctm[1]*px+ctm[3]*py+ctm[5]];
+      });
+      const xs=corners.map(c=>c[0]), ys=corners.map(c=>c[1]);
+      const pdfX=Math.min(...xs), pdfY=Math.min(...ys);
+      const pdfW=Math.max(...xs)-pdfX, pdfH=Math.max(...ys)-pdfY;
+      // convert to canvas coords
+      const cx=pdfX*scale, cy=vp.height-((pdfY+pdfH)*scale);
+      const cw=pdfW*scale, ch=pdfH*scale;
+      if(cw>10&&ch>10) imgs.push({cx,cy,cw,ch,pdfX,pdfY,pdfW,pdfH});
+    }
+  }
+  detectedImages[currentPage]=imgs;
+  imgs.forEach((img,idx)=>{
+    const box=document.createElement('div');
+    box.className='img-detect-box';
+    box.style.cssText=`left:${img.cx}px;top:${img.cy}px;width:${img.cw}px;height:${img.ch}px`;
+    const del=document.createElement('div');
+    del.className='img-del';del.textContent='✕';del.title='Remove this image';
+    del.onclick=e=>{
+      e.stopPropagation();
+      // Add whiteout over this image
+      if(!drawEdits[currentPage])drawEdits[currentPage]=[];
+      drawEdits[currentPage].push({type:'whiteout',x1:img.pdfX,y1:img.pdfY,x2:img.pdfX+img.pdfW,y2:img.pdfY+img.pdfH,color:'#ffffff',width:1,opacity:1});
+      redrawShapes();
+      box.remove();
+      showToast('Image removed. Click Apply & Download to save.');
+    };
+    box.appendChild(del);
+    layer.appendChild(box);
+  });
+}
+
+function showHint(msg){
+  document.getElementById('hintMsg').textContent=msg;
+  document.getElementById('hintBar').classList.add('show');
+}
+function hideHint(){document.getElementById('hintBar').classList.remove('show');}
+function cancelHintMode(){hideHint();setMode('text');pendingSigDataUrl=null;pendingSigPos=null;}
 let drawing=false, drawStart={x:0,y:0};
 
 function redrawShapes(){
@@ -474,22 +549,20 @@ function openSigModal(){
 }
 function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
 function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
+// ---- SIGNATURE: click spot first, then draw ----
+let pendingSigPos=null;
 let pendingSigDataUrl=null;
-function placeSig(){
-  const c=document.getElementById('sigCanvas');
-  // check if anything was drawn
-  const ctx=c.getContext('2d');
-  const blank=document.createElement('canvas');
-  blank.width=c.width;blank.height=c.height;
-  if(c.toDataURL()===blank.toDataURL()){alert('Please draw your signature first.');return;}
-  pendingSigDataUrl=c.toDataURL('image/png');
-  closeSigModal();
-  setMode('place-sig');
-  showToast('Click on the PDF where you want to place your signature');
-}
 
-// Click to place signature at chosen position
+// When mode='sign', clicking PDF sets the position, then opens draw modal
 pageWrap.addEventListener('click',e=>{
+  if(mode==='sign'){
+    if(e.target===document.getElementById('pdfCanvas')||e.target===document.getElementById('drawCanvas')){
+      const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+      pendingSigPos={cx:e.clientX-r.left, cy:e.clientY-r.top};
+      openSigModal();
+    }
+    return;
+  }
   if(mode!=='place-sig')return;
   if(e.target===document.getElementById('pdfCanvas')||e.target===document.getElementById('drawCanvas')){
     const r=document.getElementById('pdfCanvas').getBoundingClientRect();
@@ -500,8 +573,47 @@ pageWrap.addEventListener('click',e=>{
     createOverlayEl(ed);
     pendingSigDataUrl=null;
     setMode('text');
+    hideHint();
   }
 });
+
+function openSigModal(){
+  document.getElementById('sigModal').classList.add('show');
+  const c=document.getElementById('sigCanvas');
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  sigCtx=ctx;
+  sigCtx.strokeStyle='#000'; sigCtx.lineWidth=2; sigCtx.lineCap='round';
+  c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
+  c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
+  c.onmouseup=()=>sigDrawing=false; c.onmouseleave=()=>sigDrawing=false;
+  c.ontouchstart=e=>{e.preventDefault();sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);};
+  c.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);sigCtx.stroke();};
+  c.ontouchend=()=>sigDrawing=false;
+}
+function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
+function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
+function placeSig(){
+  const c=document.getElementById('sigCanvas');
+  const blank=document.createElement('canvas');blank.width=c.width;blank.height=c.height;
+  if(c.toDataURL()===blank.toDataURL()){alert('Please draw your signature first.');return;}
+  const dataUrl=c.toDataURL('image/png');
+  closeSigModal();
+  if(pendingSigPos){
+    // Position was already chosen before opening modal
+    const ed={type:'sig',dataUrl,cx:pendingSigPos.cx-100,cy:pendingSigPos.cy-40,cw:200,ch:80};
+    if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
+    overlayEdits[currentPage].push(ed);
+    createOverlayEl(ed);
+    pendingSigPos=null;
+    setMode('text');
+  } else {
+    // Fallback: click to place
+    pendingSigDataUrl=dataUrl;
+    setMode('place-sig');
+    showHint('Now click on the PDF where you want to place your signature');
+  }
+}
 
 // ---- UNDO ----
 function undoLast(){
@@ -517,11 +629,16 @@ function setMode(m){
   document.querySelectorAll('.tbtn[id^="tbtn-"]').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('tbtn-'+m);
   if(btn)btn.classList.add('active');
-  // cursor
-  const cursorMap={'text':'text','addtext':'text','image':'copy','rect':'crosshair','circle':'crosshair','line':'crosshair','highlight':'crosshair','whiteout':'crosshair','erase-img':'crosshair','place-sig':'crosshair','sign':'copy','select':'default'};
+  const cursorMap={'text':'text','addtext':'text','image':'copy','rect':'crosshair','circle':'crosshair','line':'crosshair','highlight':'crosshair','whiteout':'crosshair','erase-img':'crosshair','place-sig':'crosshair','sign':'crosshair','remove-img':'default','select':'default'};
   pageWrap.style.cursor=cursorMap[m]||'default';
   const textModes=['text','addtext'];
   document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents=textModes.includes(m)?'all':'none');
+  // toggle image detect layer
+  const idl=document.getElementById('imgDetectLayer');
+  if(idl) idl.style.pointerEvents=(m==='remove-img')?'all':'none';
+  // show hint for sign mode
+  if(m==='sign') showHint('Click on the PDF where you want to place your signature, then draw it');
+  else if(m!=='place-sig') hideHint();
 }
 
 function showToast(msg){
