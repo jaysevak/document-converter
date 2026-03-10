@@ -124,6 +124,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- Annotate -->
   <button class="tbtn" id="tbtn-highlight" onclick="setMode('highlight')"><i class="fas fa-highlighter"></i> Highlight</button>
   <button class="tbtn" id="tbtn-whiteout" onclick="setMode('whiteout')"><i class="fas fa-eraser"></i> Whiteout</button>
+  <button class="tbtn" id="tbtn-erase-img" onclick="setMode('erase-img')" title="Draw over existing images to erase them"><i class="fas fa-image"></i><i class="fas fa-times" style="font-size:9px;margin-left:-4px"></i> Erase Image</button>
   <div class="tsep"></div>
   <!-- Style -->
   <input type="color" class="tcol" id="strokeColor" value="#d32f2f" title="Color">
@@ -311,7 +312,7 @@ function drawShape(ctx,ed){
     ctx.globalAlpha=0.35;
     ctx.fillStyle=ed.color||'#ffeb3b';
     ctx.fillRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
-  } else if(ed.type==='whiteout'){
+  } else if(ed.type==='whiteout'||ed.type==='erase-img'){
     ctx.globalAlpha=1; ctx.fillStyle='#ffffff';
     ctx.fillRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
   }
@@ -378,7 +379,7 @@ const pageWrap=document.getElementById('pageWrap');
 let previewShape=null;
 
 pageWrap.addEventListener('mousedown',e=>{
-  if(!['rect','circle','line','highlight','whiteout'].includes(mode))return;
+  if(!['rect','circle','line','highlight','whiteout','erase-img'].includes(mode))return;
   if(e.target!==document.getElementById('pdfCanvas')&&e.target!==document.getElementById('drawCanvas'))return;
   e.preventDefault();
   const r=document.getElementById('pdfCanvas').getBoundingClientRect();
@@ -473,18 +474,34 @@ function openSigModal(){
 }
 function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
 function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
+let pendingSigDataUrl=null;
 function placeSig(){
   const c=document.getElementById('sigCanvas');
-  const dataUrl=c.toDataURL('image/png');
-  const vph=document.getElementById('pdfCanvas').height;
-  const vpw=document.getElementById('pdfCanvas').width;
-  const ed={type:'sig',dataUrl,cx:vpw/2-100,cy:vph-120,cw:200,ch:80,
-    x:(vpw/2-100)/scale,y:(vph-(vph-120+80))/scale,w:200/scale,h:80/scale};
-  if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
-  overlayEdits[currentPage].push(ed);
-  createOverlayEl(ed);
+  // check if anything was drawn
+  const ctx=c.getContext('2d');
+  const blank=document.createElement('canvas');
+  blank.width=c.width;blank.height=c.height;
+  if(c.toDataURL()===blank.toDataURL()){alert('Please draw your signature first.');return;}
+  pendingSigDataUrl=c.toDataURL('image/png');
   closeSigModal();
+  setMode('place-sig');
+  showToast('Click on the PDF where you want to place your signature');
 }
+
+// Click to place signature at chosen position
+pageWrap.addEventListener('click',e=>{
+  if(mode!=='place-sig')return;
+  if(e.target===document.getElementById('pdfCanvas')||e.target===document.getElementById('drawCanvas')){
+    const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+    const cx=e.clientX-r.left, cy=e.clientY-r.top;
+    const ed={type:'sig',dataUrl:pendingSigDataUrl,cx:cx-100,cy:cy-40,cw:200,ch:80};
+    if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
+    overlayEdits[currentPage].push(ed);
+    createOverlayEl(ed);
+    pendingSigDataUrl=null;
+    setMode('text');
+  }
+});
 
 // ---- UNDO ----
 function undoLast(){
@@ -500,15 +517,18 @@ function setMode(m){
   document.querySelectorAll('.tbtn[id^="tbtn-"]').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('tbtn-'+m);
   if(btn)btn.classList.add('active');
-  pageWrap.className='mode-'+m;
-  // enable/disable text layer pointer events
-  document.getElementById('textLayer').style.pointerEvents=(m==='text'||m==='addtext')?'none':'none';
-  // for text mode, spans handle their own pointer events
-  if(m==='text'||m==='addtext'){
-    document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents='all');
-  } else {
-    document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents='none');
-  }
+  // cursor
+  const cursorMap={'text':'text','addtext':'text','image':'copy','rect':'crosshair','circle':'crosshair','line':'crosshair','highlight':'crosshair','whiteout':'crosshair','erase-img':'crosshair','place-sig':'crosshair','sign':'copy','select':'default'};
+  pageWrap.style.cursor=cursorMap[m]||'default';
+  const textModes=['text','addtext'];
+  document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents=textModes.includes(m)?'all':'none');
+}
+
+function showToast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:600;transition:opacity .3s';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3000);
 }
 
 // ---- APPLY & DOWNLOAD ----
@@ -552,7 +572,7 @@ async function applyChanges(){
         } else if(ed.type==='highlight'){
           const hc=hexRgb(ed.color||'#ffeb3b');
           page.drawRectangle({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),color:rgb(hc.r,hc.g,hc.b),opacity:0.35});
-        } else if(ed.type==='whiteout'){
+        } else if(ed.type==='whiteout'||ed.type==='erase-img'){
           page.drawRectangle({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),color:rgb(1,1,1),opacity:1});
         }
       }
@@ -562,8 +582,9 @@ async function applyChanges(){
         const imgBytes=await fetch(ed.dataUrl).then(r=>r.arrayBuffer());
         let embImg;
         try{embImg=await doc.embedPng(imgBytes);}catch{try{embImg=await doc.embedJpg(imgBytes);}catch{continue;}}
-        const x=ed.cx/scale, y=height-(ed.cy/scale)-(ed.ch/scale);
-        page.drawImage(embImg,{x,y,width:ed.cw/scale,height:ed.ch/scale});
+        const ix=ed.cx/scale;
+        const iy=height-(ed.cy/scale)-(ed.ch/scale);
+        page.drawImage(embImg,{x:ix,y:iy,width:ed.cw/scale,height:ed.ch/scale});
       }
     }
 
