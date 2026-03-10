@@ -358,7 +358,13 @@ function showHint(msg){
   document.getElementById('hintBar').classList.add('show');
 }
 function hideHint(){document.getElementById('hintBar').classList.remove('show');}
-function cancelHintMode(){hideHint();setMode('text');pendingSigDataUrl=null;pendingSigPos=null;}
+function cancelHintMode(){
+  hideHint();
+  if(sigMarker){sigMarker.remove();sigMarker=null;}
+  pendingSigPos=null;
+  pendingSigDataUrl=null;
+  setMode('text');
+}
 let drawing=false, drawStart={x:0,y:0};
 
 function redrawShapes(){
@@ -492,21 +498,38 @@ document.addEventListener('mouseup',e=>{
   redrawShapes();
 });
 
-// Click to add text
+// Click to add text OR place signature — unified handler on pageWrap
 pageWrap.addEventListener('click',e=>{
-  if(mode!=='addtext')return;
-  if(e.target!==document.getElementById('pdfCanvas')&&e.target!==document.getElementById('drawCanvas'))return;
+  // Don't fire if clicking on overlay elements or buttons
+  if(e.target.closest('.ov-el')||e.target.closest('.img-detect-box')||e.target.closest('.ts')) return;
+
   const r=document.getElementById('pdfCanvas').getBoundingClientRect();
-  const vph=document.getElementById('pdfCanvas').height;
-  const pdfX=(e.clientX-r.left)/scale, pdfY=(vph-(e.clientY-r.top))/scale;
-  const fs=parseInt(document.getElementById('fontSize').value)||14;
-  const color=document.getElementById('strokeColor').value;
-  const fontName=document.getElementById('fontFamily').value;
-  const ed={x:pdfX,y:pdfY,fs,color,fontName,newText:'Text',isNew:true};
-  if(!textEdits[currentPage])textEdits[currentPage]=[];
-  textEdits[currentPage].push(ed);
-  const span=addNewTextSpan(ed);
-  setTimeout(()=>{span.focus();document.execCommand('selectAll',false,null);},10);
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+
+  if(mode==='sign'){
+    // Store position, show marker, open draw modal
+    pendingSigPos={cx,cy};
+    // Show red crosshair marker at click position
+    if(sigMarker) sigMarker.remove();
+    sigMarker=document.createElement('div');
+    sigMarker.style.cssText=`position:absolute;left:${cx-10}px;top:${cy-10}px;width:20px;height:20px;border:2px solid #d32f2f;border-radius:50%;background:rgba(211,47,47,.2);z-index:20;pointer-events:none`;
+    pageWrap.appendChild(sigMarker);
+    openSigModal();
+    return;
+  }
+
+  if(mode==='addtext'){
+    const vph=document.getElementById('pdfCanvas').height;
+    const pdfX=cx/scale, pdfY=(vph-cy)/scale;
+    const fs=parseInt(document.getElementById('fontSize').value)||14;
+    const color=document.getElementById('strokeColor').value;
+    const fontName=document.getElementById('fontFamily').value;
+    const ed={x:pdfX,y:pdfY,fs,color,fontName,newText:'Text',isNew:true};
+    if(!textEdits[currentPage])textEdits[currentPage]=[];
+    textEdits[currentPage].push(ed);
+    const span=addNewTextSpan(ed);
+    setTimeout(()=>{span.focus();document.execCommand('selectAll',false,null);},10);
+  }
 });
 
 // ---- IMAGE UPLOAD ----
@@ -552,30 +575,7 @@ function closeSigModal(){document.getElementById('sigModal').classList.remove('s
 // ---- SIGNATURE: click spot first, then draw ----
 let pendingSigPos=null;
 let pendingSigDataUrl=null;
-
-// When mode='sign', clicking PDF sets the position, then opens draw modal
-pageWrap.addEventListener('click',e=>{
-  if(mode==='sign'){
-    if(e.target===document.getElementById('pdfCanvas')||e.target===document.getElementById('drawCanvas')){
-      const r=document.getElementById('pdfCanvas').getBoundingClientRect();
-      pendingSigPos={cx:e.clientX-r.left, cy:e.clientY-r.top};
-      openSigModal();
-    }
-    return;
-  }
-  if(mode!=='place-sig')return;
-  if(e.target===document.getElementById('pdfCanvas')||e.target===document.getElementById('drawCanvas')){
-    const r=document.getElementById('pdfCanvas').getBoundingClientRect();
-    const cx=e.clientX-r.left, cy=e.clientY-r.top;
-    const ed={type:'sig',dataUrl:pendingSigDataUrl,cx:cx-100,cy:cy-40,cw:200,ch:80};
-    if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
-    overlayEdits[currentPage].push(ed);
-    createOverlayEl(ed);
-    pendingSigDataUrl=null;
-    setMode('text');
-    hideHint();
-  }
-});
+let sigMarker=null;
 
 function openSigModal(){
   document.getElementById('sigModal').classList.add('show');
@@ -584,6 +584,33 @@ function openSigModal(){
   ctx.clearRect(0,0,c.width,c.height);
   sigCtx=ctx;
   sigCtx.strokeStyle='#000'; sigCtx.lineWidth=2; sigCtx.lineCap='round';
+  c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
+  c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
+  c.onmouseup=()=>sigDrawing=false; c.onmouseleave=()=>sigDrawing=false;
+  c.ontouchstart=e=>{e.preventDefault();sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);};
+  c.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);sigCtx.stroke();};
+  c.ontouchend=()=>sigDrawing=false;
+}
+function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
+function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
+function placeSig(){
+  const c=document.getElementById('sigCanvas');
+  const blank=document.createElement('canvas');blank.width=c.width;blank.height=c.height;
+  if(c.toDataURL()===blank.toDataURL()){alert('Please draw your signature first.');return;}
+  const dataUrl=c.toDataURL('image/png');
+  closeSigModal();
+  // Remove marker
+  if(sigMarker){sigMarker.remove();sigMarker=null;}
+  if(pendingSigPos){
+    const ed={type:'sig',dataUrl,cx:pendingSigPos.cx-100,cy:pendingSigPos.cy-40,cw:200,ch:80};
+    if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
+    overlayEdits[currentPage].push(ed);
+    createOverlayEl(ed);
+    pendingSigPos=null;
+  }
+  setMode('text');
+  hideHint();
+}
   c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
   c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
   c.onmouseup=()=>sigDrawing=false; c.onmouseleave=()=>sigDrawing=false;
@@ -629,7 +656,7 @@ function setMode(m){
   document.querySelectorAll('.tbtn[id^="tbtn-"]').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('tbtn-'+m);
   if(btn)btn.classList.add('active');
-  const cursorMap={'text':'text','addtext':'text','image':'copy','rect':'crosshair','circle':'crosshair','line':'crosshair','highlight':'crosshair','whiteout':'crosshair','erase-img':'crosshair','place-sig':'crosshair','sign':'crosshair','remove-img':'default','select':'default'};
+  const cursorMap={'text':'text','addtext':'text','image':'copy','rect':'crosshair','circle':'crosshair','line':'crosshair','highlight':'crosshair','whiteout':'crosshair','erase-img':'crosshair','sign':'crosshair','remove-img':'default','select':'default'};
   pageWrap.style.cursor=cursorMap[m]||'default';
   const textModes=['text','addtext'];
   document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents=textModes.includes(m)?'all':'none');
