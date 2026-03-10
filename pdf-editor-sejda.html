@@ -13,22 +13,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .header{background:#fff;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid #e0e0e0;flex-shrink:0}
 .logo{font-size:18px;font-weight:700;color:#d32f2f;display:flex;align-items:center;gap:8px}
 .hbtns{display:flex;gap:8px}
-.btn{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px}
+.btn{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
 .btn-red{background:#d32f2f;color:#fff}.btn-red:hover{background:#b71c1c}
-.btn-gray{background:#f0f0f0;color:#333;border:1px solid #ddd}
+.btn-gray{background:#f0f0f0;color:#333;border:1px solid #ddd}.btn-gray:hover{background:#e0e0e0}
 
-#toolbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 16px;display:none;gap:8px;align-items:center;flex-shrink:0}
+/* TOOLBAR */
+#toolbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:6px 12px;display:none;gap:4px;align-items:center;flex-wrap:wrap;flex-shrink:0}
 #toolbar.show{display:flex}
-.tbtn{padding:7px 14px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px}
+.tbtn{padding:6px 12px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all .2s}
 .tbtn:hover{border-color:#d32f2f;background:#fff5f5}
 .tbtn.active{background:#d32f2f;color:#fff;border-color:#d32f2f}
-.tsep{width:1px;height:28px;background:#e0e0e0;margin:0 2px}
-select.tsel{padding:6px 10px;border:1px solid #ddd;border-radius:5px;font-size:13px;background:#fff}
-input[type=color].tcol{width:32px;height:32px;border:1px solid #ddd;border-radius:5px;padding:2px;cursor:pointer}
+.tsep{width:1px;height:26px;background:#e0e0e0;margin:0 2px;flex-shrink:0}
+.tsel{padding:5px 8px;border:1px solid #ddd;border-radius:5px;font-size:12px;background:#fff;cursor:pointer}
+.tcol{width:28px;height:28px;border:1px solid #ddd;border-radius:5px;padding:2px;cursor:pointer}
+.tnum{width:50px;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:12px;text-align:center}
 
+/* MAIN */
 .main{flex:1;overflow:hidden;display:flex}
 #uploadArea{flex:1;display:flex;align-items:center;justify-content:center}
-.upload-box{background:#fff;border:3px dashed #ccc;border-radius:16px;padding:60px 50px;text-align:center;cursor:pointer;max-width:480px}
+.upload-box{background:#fff;border:3px dashed #ccc;border-radius:16px;padding:60px 50px;text-align:center;cursor:pointer;max-width:480px;transition:all .3s}
 .upload-box:hover{border-color:#d32f2f;background:#fff5f5}
 .upload-box i{font-size:60px;color:#d32f2f;margin-bottom:16px;display:block}
 .upload-box h2{font-size:22px;color:#333;margin-bottom:8px}
@@ -38,56 +41,62 @@ input[type=color].tcol{width:32px;height:32px;border:1px solid #ddd;border-radiu
 #editorArea{flex:1;display:none;overflow:auto;padding:30px;align-items:flex-start;justify-content:center}
 #editorArea.show{display:flex}
 
-#pageWrap{position:relative;display:inline-block;box-shadow:0 4px 24px rgba(0,0,0,.15);background:#fff}
-#pdfCanvas{display:block}
+/* PAGE WRAP - all layers stacked */
+#pageWrap{position:relative;display:inline-block;box-shadow:0 4px 24px rgba(0,0,0,.15);background:#fff;user-select:none}
+#pdfCanvas{display:block;position:relative;z-index:1}
+#textLayer{position:absolute;top:0;left:0;z-index:2;pointer-events:none}
+#drawCanvas{position:absolute;top:0;left:0;z-index:3;pointer-events:none}
+#overlayLayer{position:absolute;top:0;left:0;z-index:4;pointer-events:none}
 
-/* TEXT OVERLAY */
-#textLayer{position:absolute;top:0;left:0;pointer-events:none}
-.ts{
-  position:absolute;
-  color:transparent;       /* hide — PDF canvas shows real text */
-  white-space:pre;
-  cursor:text;
-  pointer-events:all;
-  border-radius:2px;
-  outline:none;
-  line-height:1;
-}
-/* hover: show blue highlight so user knows it's clickable */
-.ts:hover{background:rgba(66,133,244,.18);color:transparent}
-/* active editing: white bg covers original, black text visible */
-.ts:focus{
-  color:#000 !important;
-  background:#fff !important;
-  outline:2px solid #d32f2f !important;
-  z-index:10;
-  min-width:20px;
-}
-/* after edit confirmed: white bg covers original text */
-.ts.edited{
-  color:#000;
-  background:#fff;
-}
-/* add-text mode cursor */
-#pageWrap.addmode{cursor:crosshair}
+/* Text spans */
+.ts{position:absolute;color:transparent;white-space:pre;cursor:text;pointer-events:all;border-radius:2px;outline:none;line-height:1}
+.ts:hover{background:rgba(66,133,244,.15)}
+.ts:focus{color:#000!important;background:#fff!important;outline:2px solid #d32f2f!important;z-index:10;min-width:20px}
+.ts.edited{color:#000;background:#fff}
 
+/* Overlay elements (images, shapes placed by user) */
+.ov-el{position:absolute;cursor:move;border:2px solid transparent;transition:border .15s}
+.ov-el:hover{border-color:#4285f4}
+.ov-el.selected{border-color:#d32f2f!important}
+.ov-el .del-btn{position:absolute;top:-10px;right:-10px;width:20px;height:20px;background:#d32f2f;color:#fff;border-radius:50%;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:20}
+.ov-el:hover .del-btn,.ov-el.selected .del-btn{display:flex}
+.ov-el .resize-handle{position:absolute;bottom:-5px;right:-5px;width:12px;height:12px;background:#d32f2f;border-radius:2px;cursor:se-resize;display:none}
+.ov-el:hover .resize-handle,.ov-el.selected .resize-handle{display:block}
+
+/* Signature canvas */
+#sigModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
+#sigModal.show{display:flex}
+.sig-box{background:#fff;border-radius:12px;padding:24px;text-align:center;width:500px}
+.sig-box h3{margin-bottom:12px;font-size:16px}
+#sigCanvas{border:2px solid #ddd;border-radius:8px;cursor:crosshair;display:block;margin:0 auto}
+.sig-btns{display:flex;gap:8px;margin-top:12px;justify-content:center}
+
+/* Bottom bar */
 #bottomBar{background:#fff;border-top:1px solid #e0e0e0;padding:10px 20px;display:none;justify-content:space-between;align-items:center;flex-shrink:0}
 #bottomBar.show{display:flex}
 .page-nav,.zoom-ctrl{display:flex;align-items:center;gap:10px;font-size:14px}
 .nav-btn{width:30px;height:30px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .nav-btn:hover{background:#f5f5f5}
 
+/* Loading modal */
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
 .modal.show{display:flex}
 .mbox{background:#fff;border-radius:12px;padding:36px;text-align:center;max-width:360px}
 .mbox i{font-size:48px;margin-bottom:12px;display:block;animation:spin 1s linear infinite;color:#d32f2f}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.hint{font-size:12px;color:#888;padding:4px 12px;background:#fffde7;border-radius:4px;border:1px solid #ffe082}
+/* Cursor modes */
+#pageWrap.mode-text{cursor:text}
+#pageWrap.mode-addtext{cursor:text}
+#pageWrap.mode-image{cursor:copy}
+#pageWrap.mode-rect,#pageWrap.mode-circle,#pageWrap.mode-line{cursor:crosshair}
+#pageWrap.mode-highlight{cursor:crosshair}
+#pageWrap.mode-whiteout{cursor:crosshair}
+#pageWrap.mode-sign{cursor:copy}
+#pageWrap.mode-select{cursor:default}
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="logo"><i class="fas fa-file-pdf"></i> PDF Master Pro — Edit PDF</div>
   <div class="hbtns">
@@ -97,16 +106,32 @@ input[type=color].tcol{width:32px;height:32px;border:1px solid #ddd;border-radiu
 </div>
 
 <div id="toolbar">
-  <button class="tbtn active" id="tbtn-select" onclick="setMode('select')"><i class="fas fa-i-cursor"></i> Edit Text</button>
-  <button class="tbtn" id="tbtn-addtext" onclick="setMode('addtext')"><i class="fas fa-plus"></i> Add Text</button>
+  <!-- Text tools -->
+  <button class="tbtn active" id="tbtn-text" onclick="setMode('text')"><i class="fas fa-i-cursor"></i> Edit Text</button>
+  <button class="tbtn" id="tbtn-addtext" onclick="setMode('addtext')"><i class="fas fa-font"></i> Add Text</button>
   <div class="tsep"></div>
+  <!-- Image -->
+  <button class="tbtn" id="tbtn-image" onclick="triggerImageUpload()"><i class="fas fa-image"></i> Add Image</button>
+  <input type="file" id="imgInput" accept="image/*" style="display:none">
+  <!-- Signature -->
+  <button class="tbtn" id="tbtn-sign" onclick="openSigModal()"><i class="fas fa-signature"></i> Signature</button>
+  <div class="tsep"></div>
+  <!-- Shapes -->
+  <button class="tbtn" id="tbtn-rect" onclick="setMode('rect')"><i class="fas fa-square"></i> Rectangle</button>
+  <button class="tbtn" id="tbtn-circle" onclick="setMode('circle')"><i class="fas fa-circle"></i> Circle</button>
+  <button class="tbtn" id="tbtn-line" onclick="setMode('line')"><i class="fas fa-minus"></i> Line</button>
+  <div class="tsep"></div>
+  <!-- Annotate -->
+  <button class="tbtn" id="tbtn-highlight" onclick="setMode('highlight')"><i class="fas fa-highlighter"></i> Highlight</button>
+  <button class="tbtn" id="tbtn-whiteout" onclick="setMode('whiteout')"><i class="fas fa-eraser"></i> Whiteout</button>
+  <div class="tsep"></div>
+  <!-- Style -->
+  <input type="color" class="tcol" id="strokeColor" value="#d32f2f" title="Color">
+  <input type="number" class="tnum" id="strokeWidth" value="2" min="1" max="20" title="Size/Width">
   <select class="tsel" id="fontFamily"><option>Helvetica</option><option>Times-Roman</option><option>Courier</option></select>
-  <select class="tsel" id="fontSize"><option value="10">10</option><option value="12">12</option><option value="14" selected>14</option><option value="16">16</option><option value="18">18</option><option value="24">24</option><option value="32">32</option></select>
-  <input type="color" class="tcol" id="fontColor" value="#000000" title="Color">
+  <input type="number" class="tnum" id="fontSize" value="14" min="6" max="72" title="Font size">
   <div class="tsep"></div>
   <button class="tbtn" onclick="undoLast()"><i class="fas fa-undo"></i> Undo</button>
-  <div class="tsep"></div>
-  <span class="hint" id="hintText">Click any text on the PDF to edit it directly</span>
 </div>
 
 <div class="main">
@@ -120,9 +145,11 @@ input[type=color].tcol{width:32px;height:32px;border:1px solid #ddd;border-radiu
     </div>
   </div>
   <div id="editorArea">
-    <div id="pageWrap">
+    <div id="pageWrap" class="mode-text">
       <canvas id="pdfCanvas"></canvas>
       <div id="textLayer"></div>
+      <canvas id="drawCanvas"></canvas>
+      <div id="overlayLayer"></div>
     </div>
   </div>
 </div>
@@ -140,24 +167,39 @@ input[type=color].tcol{width:32px;height:32px;border:1px solid #ddd;border-radiu
   </div>
 </div>
 
+<!-- Signature Modal -->
+<div id="sigModal">
+  <div class="sig-box">
+    <h3>Draw Your Signature</h3>
+    <canvas id="sigCanvas" width="440" height="180"></canvas>
+    <div class="sig-btns">
+      <button class="btn btn-gray" onclick="clearSig()"><i class="fas fa-trash"></i> Clear</button>
+      <button class="btn btn-gray" onclick="closeSigModal()">Cancel</button>
+      <button class="btn btn-red" onclick="placeSig()"><i class="fas fa-check"></i> Place Signature</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="loadModal">
   <div class="mbox"><i class="fas fa-spinner"></i><h3 id="loadMsg">Loading...</h3></div>
 </div>
-
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfJsDoc=null, currentPage=1, scale=1.5, mode='select';
+let pdfJsDoc=null, currentPage=1, scale=1.5, mode='text';
 let originalBytes=null;
-// edits[page] = [{x,y,fs,origText,newText,isNew,color,fontName}]
-let edits={};
+// edits per page
+let textEdits={};   // {page:[{x,y,fs,origText,newText,isNew,color,fontName}]}
+let drawEdits={};   // {page:[{type,x1,y1,x2,y2,color,width,opacity}]}
+let overlayEdits={}; // {page:[{type:'image'|'sig',x,y,w,h,dataUrl}]}
 
+// ---- FILE LOAD ----
 document.getElementById('fi').addEventListener('change',async e=>{
   const file=e.target.files[0]; if(!file)return;
   showModal('Loading PDF...');
   const buf=await file.arrayBuffer();
-  originalBytes=buf.slice(0);          // clean copy for pdf-lib (never touched by pdf.js)
-  const pdfJsCopy=buf.slice(0);        // separate copy for pdf.js (it will detach this)
+  originalBytes=buf.slice(0);
+  const pdfJsCopy=buf.slice(0);
   pdfJsDoc=await pdfjsLib.getDocument({data:new Uint8Array(pdfJsCopy)}).promise;
   document.getElementById('uploadArea').style.display='none';
   document.getElementById('editorArea').classList.add('show');
@@ -169,33 +211,34 @@ document.getElementById('fi').addEventListener('change',async e=>{
   hideModal();
 });
 
+// ---- RENDER ----
 async function renderPage(n){
   currentPage=n;
   document.getElementById('pgNum').textContent=n;
   const page=await pdfJsDoc.getPage(n);
   const vp=page.getViewport({scale});
   const canvas=document.getElementById('pdfCanvas');
+  const dc=document.getElementById('drawCanvas');
   canvas.width=vp.width; canvas.height=vp.height;
-  const layer=document.getElementById('textLayer');
-  layer.style.width=vp.width+'px'; layer.style.height=vp.height+'px';
+  dc.width=vp.width; dc.height=vp.height;
+  document.getElementById('textLayer').style.cssText=`width:${vp.width}px;height:${vp.height}px`;
+  document.getElementById('overlayLayer').style.cssText=`width:${vp.width}px;height:${vp.height}px`;
   await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
   await buildTextLayer(page,vp);
+  redrawShapes();
+  rebuildOverlays();
 }
 
+// ---- TEXT LAYER ----
 async function buildTextLayer(page,vp){
   const layer=document.getElementById('textLayer');
   layer.innerHTML='';
   const content=await page.getTextContent();
-
-  content.items.forEach((item,idx)=>{
+  content.items.forEach(item=>{
     if(!item.str) return;
     const tx=item.transform;
-    const x=tx[4]*scale;
-    const rawY=tx[5]*scale;
-    const y=vp.height - rawY;
-    const fs=Math.abs(tx[3])*scale;
-    const w=Math.max(item.width*scale, 4);
-
+    const x=tx[4]*scale, rawY=tx[5]*scale, y=vp.height-rawY;
+    const fs=Math.abs(tx[3])*scale, w=Math.max(item.width*scale,4);
     const span=document.createElement('span');
     span.className='ts';
     span.contentEditable='true';
@@ -203,148 +246,324 @@ async function buildTextLayer(page,vp){
     span.textContent=item.str;
     span.style.cssText=`left:${x}px;top:${y-fs}px;font-size:${fs}px;width:${w}px;height:${fs*1.3}px`;
     span.dataset.origText=item.str;
-    span.dataset.x=tx[4];
-    span.dataset.y=tx[5];
-    span.dataset.fs=Math.abs(tx[3]);
-
-    // Restore any previous edit for this item
-    const pageEdits=edits[currentPage]||[];
-    const prev=pageEdits.find(e=>!e.isNew && Math.abs(e.x-tx[4])<1 && Math.abs(e.y-tx[5])<1);
-    if(prev){
-      span.textContent=prev.newText;
-      span.classList.add('edited');
-    }
-
-    span.addEventListener('focus',()=>{
-      if(mode!=='select'){span.blur();return;}
-      // On focus: make editable, show text
-      span.style.color='#000';
-    });
-
+    span.dataset.x=tx[4]; span.dataset.y=tx[5]; span.dataset.fs=Math.abs(tx[3]);
+    // restore prev edit
+    const prev=(textEdits[currentPage]||[]).find(e=>!e.isNew&&Math.abs(e.x-tx[4])<1&&Math.abs(e.y-tx[5])<1);
+    if(prev){span.textContent=prev.newText;span.classList.add('edited');}
+    span.addEventListener('focus',()=>{if(mode!=='text'&&mode!=='addtext'){span.blur();}});
     span.addEventListener('blur',()=>{
-      const newText=span.textContent;
-      const origText=span.dataset.origText;
-      if(newText!==origText){
-        span.classList.add('edited');
-        span.dataset.origText=newText;
-        if(!edits[currentPage]) edits[currentPage]=[];
-        // Remove old edit for same position if exists
-        edits[currentPage]=edits[currentPage].filter(e=>!(Math.abs(e.x-parseFloat(span.dataset.x))<1 && Math.abs(e.y-parseFloat(span.dataset.y))<1 && !e.isNew));
-        edits[currentPage].push({
-          x:parseFloat(span.dataset.x),
-          y:parseFloat(span.dataset.y),
-          fs:parseFloat(span.dataset.fs),
-          origText,
-          newText,
-          isNew:false
-        });
-      } else if(!span.classList.contains('edited')){
-        span.style.color='transparent';
+      const nt=span.textContent, ot=span.dataset.origText;
+      if(nt!==ot){
+        span.classList.add('edited'); span.dataset.origText=nt;
+        if(!textEdits[currentPage])textEdits[currentPage]=[];
+        textEdits[currentPage]=textEdits[currentPage].filter(e=>!(Math.abs(e.x-parseFloat(span.dataset.x))<1&&Math.abs(e.y-parseFloat(span.dataset.y))<1&&!e.isNew));
+        textEdits[currentPage].push({x:parseFloat(span.dataset.x),y:parseFloat(span.dataset.y),fs:parseFloat(span.dataset.fs),origText:ot,newText:nt,isNew:false});
       }
     });
-
-    span.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();span.blur();}
-      if(e.key==='Escape'){span.textContent=span.dataset.origText;span.blur();}
-    });
-
+    span.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();span.blur();}if(e.key==='Escape'){span.textContent=span.dataset.origText;span.blur();}});
     layer.appendChild(span);
   });
-
-  // Re-add new text items for this page
-  (edits[currentPage]||[]).filter(e=>e.isNew).forEach(ed=>addNewTextSpan(ed));
-
-  // Click on canvas = add text
-  document.getElementById('pageWrap').onclick=e=>{
-    if(mode==='addtext' && (e.target===document.getElementById('pdfCanvas')||e.target===layer)){
-      addTextAt(e);
-    }
-  };
-}
-
-function addTextAt(e){
-  const wrap=document.getElementById('pageWrap');
-  const rect=wrap.getBoundingClientRect();
-  const cx=e.clientX-rect.left;
-  const cy=e.clientY-rect.top;
-  const vph=document.getElementById('pdfCanvas').height;
-  const pdfX=cx/scale;
-  const pdfY=(vph-cy)/scale;
-  const fs=parseInt(document.getElementById('fontSize').value)||14;
-  const color=document.getElementById('fontColor').value;
-  const fontName=document.getElementById('fontFamily').value;
-  const ed={x:pdfX,y:pdfY,fs,color,fontName,newText:'New Text',isNew:true};
-  if(!edits[currentPage]) edits[currentPage]=[];
-  edits[currentPage].push(ed);
-  const span=addNewTextSpan(ed);
-  // immediately focus for editing
-  setTimeout(()=>{span.focus();document.execCommand('selectAll',false,null);},10);
+  // re-add new text items
+  (textEdits[currentPage]||[]).filter(e=>e.isNew).forEach(ed=>addNewTextSpan(ed));
 }
 
 function addNewTextSpan(ed){
   const layer=document.getElementById('textLayer');
   const vph=document.getElementById('pdfCanvas').height;
-  const cx=ed.x*scale;
-  const cy=vph-ed.y*scale;
-  const fs=ed.fs*scale;
+  const cx=ed.x*scale, cy=vph-ed.y*scale, fs=ed.fs*scale;
   const span=document.createElement('span');
-  span.className='ts edited';
-  span.contentEditable='true';
-  span.spellcheck=false;
+  span.className='ts edited'; span.contentEditable='true'; span.spellcheck=false;
   span.textContent=ed.newText;
   span.style.cssText=`left:${cx}px;top:${cy-fs}px;font-size:${fs}px;color:${ed.color||'#000'};background:#fff;min-width:40px;height:${fs*1.3}px`;
-  span.dataset.origText='';
-  span.dataset.x=ed.x; span.dataset.y=ed.y; span.dataset.fs=ed.fs;
-  span.addEventListener('blur',()=>{
-    ed.newText=span.textContent;
-    if(!span.textContent.trim()){
-      span.remove();
-      edits[currentPage]=edits[currentPage].filter(e=>e!==ed);
-    }
-  });
+  span.dataset.origText=''; span.dataset.x=ed.x; span.dataset.y=ed.y; span.dataset.fs=ed.fs;
+  span.addEventListener('blur',()=>{ed.newText=span.textContent;if(!span.textContent.trim()){span.remove();textEdits[currentPage]=textEdits[currentPage].filter(e=>e!==ed);}});
   span.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();span.blur();}});
   layer.appendChild(span);
   return span;
 }
 
-function undoLast(){
-  if(!edits[currentPage]||!edits[currentPage].length) return;
-  edits[currentPage].pop();
-  renderPage(currentPage);
+// ---- DRAW SHAPES ----
+let drawing=false, drawStart={x:0,y:0};
+
+function redrawShapes(){
+  const dc=document.getElementById('drawCanvas');
+  const ctx=dc.getContext('2d');
+  ctx.clearRect(0,0,dc.width,dc.height);
+  (drawEdits[currentPage]||[]).forEach(ed=>drawShape(ctx,ed));
 }
 
+function drawShape(ctx,ed){
+  ctx.save();
+  ctx.strokeStyle=ed.color||'#d32f2f';
+  ctx.fillStyle=ed.color||'#d32f2f';
+  ctx.lineWidth=ed.width||2;
+  ctx.globalAlpha=ed.opacity||1;
+  const x1=ed.x1*scale,y1=document.getElementById('pdfCanvas').height-ed.y1*scale;
+  const x2=ed.x2*scale,y2=document.getElementById('pdfCanvas').height-ed.y2*scale;
+  if(ed.type==='rect'){
+    ctx.strokeRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
+  } else if(ed.type==='circle'){
+    const rx=Math.abs(x2-x1)/2, ry=Math.abs(y2-y1)/2;
+    ctx.beginPath(); ctx.ellipse(Math.min(x1,x2)+rx,Math.min(y1,y2)+ry,rx,ry,0,0,Math.PI*2); ctx.stroke();
+  } else if(ed.type==='line'){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  } else if(ed.type==='highlight'){
+    ctx.globalAlpha=0.35;
+    ctx.fillStyle=ed.color||'#ffeb3b';
+    ctx.fillRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
+  } else if(ed.type==='whiteout'){
+    ctx.globalAlpha=1; ctx.fillStyle='#ffffff';
+    ctx.fillRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
+  }
+  ctx.restore();
+}
+
+// ---- OVERLAY (images/signatures) ----
+function rebuildOverlays(){
+  const layer=document.getElementById('overlayLayer');
+  layer.innerHTML='';
+  (overlayEdits[currentPage]||[]).forEach(ed=>createOverlayEl(ed));
+}
+
+function createOverlayEl(ed){
+  const layer=document.getElementById('overlayLayer');
+  const vph=document.getElementById('pdfCanvas').height;
+  const el=document.createElement('div');
+  el.className='ov-el';
+  el.style.cssText=`left:${ed.cx}px;top:${ed.cy}px;width:${ed.cw}px;height:${ed.ch}px`;
+  const img=document.createElement('img');
+  img.src=ed.dataUrl; img.style.cssText='width:100%;height:100%;display:block;pointer-events:none';
+  el.appendChild(img);
+  // delete btn
+  const del=document.createElement('div');
+  del.className='del-btn'; del.innerHTML='✕';
+  del.onclick=e=>{e.stopPropagation();el.remove();overlayEdits[currentPage]=overlayEdits[currentPage].filter(x=>x!==ed);};
+  el.appendChild(del);
+  // resize handle
+  const rh=document.createElement('div'); rh.className='resize-handle';
+  el.appendChild(rh);
+  // drag
+  makeDraggable(el,ed);
+  makeResizable(el,ed,rh);
+  layer.appendChild(el);
+  return el;
+}
+
+function makeDraggable(el,ed){
+  let ox,oy,sx,sy;
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('resize-handle')||e.target.classList.contains('del-btn'))return;
+    e.preventDefault(); e.stopPropagation();
+    el.classList.add('selected');
+    ox=e.clientX; oy=e.clientY; sx=ed.cx; sy=ed.cy;
+    const mm=ev=>{ed.cx=sx+(ev.clientX-ox);ed.cy=sy+(ev.clientY-oy);el.style.left=ed.cx+'px';el.style.top=ed.cy+'px';};
+    const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);};
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  });
+}
+
+function makeResizable(el,ed,handle){
+  let ox,oy,sw,sh;
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault(); e.stopPropagation();
+    ox=e.clientX; oy=e.clientY; sw=ed.cw; sh=ed.ch;
+    const mm=ev=>{ed.cw=Math.max(20,sw+(ev.clientX-ox));ed.ch=Math.max(20,sh+(ev.clientY-oy));el.style.width=ed.cw+'px';el.style.height=ed.ch+'px';};
+    const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);};
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  });
+}
+
+// ---- CANVAS MOUSE EVENTS (shapes) ----
+const pageWrap=document.getElementById('pageWrap');
+let previewShape=null;
+
+pageWrap.addEventListener('mousedown',e=>{
+  if(!['rect','circle','line','highlight','whiteout'].includes(mode))return;
+  if(e.target!==document.getElementById('pdfCanvas')&&e.target!==document.getElementById('drawCanvas'))return;
+  e.preventDefault();
+  const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+  const vph=document.getElementById('pdfCanvas').height;
+  drawStart={x:(e.clientX-r.left)/scale, y:(vph-(e.clientY-r.top))/scale};
+  drawing=true;
+});
+
+document.addEventListener('mousemove',e=>{
+  if(!drawing)return;
+  const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+  const vph=document.getElementById('pdfCanvas').height;
+  const cx=(e.clientX-r.left)/scale, cy=(vph-(e.clientY-r.top))/scale;
+  const dc=document.getElementById('drawCanvas');
+  const ctx=dc.getContext('2d');
+  ctx.clearRect(0,0,dc.width,dc.height);
+  (drawEdits[currentPage]||[]).forEach(ed=>drawShape(ctx,ed));
+  // preview
+  const color=document.getElementById('strokeColor').value;
+  const width=parseInt(document.getElementById('strokeWidth').value)||2;
+  drawShape(ctx,{type:mode,x1:drawStart.x,y1:drawStart.y,x2:cx,y2:cy,color,width,opacity:mode==='highlight'?0.35:1});
+});
+
+document.addEventListener('mouseup',e=>{
+  if(!drawing)return;
+  drawing=false;
+  const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+  const vph=document.getElementById('pdfCanvas').height;
+  const cx=(e.clientX-r.left)/scale, cy=(vph-(e.clientY-r.top))/scale;
+  if(Math.abs(cx-drawStart.x)<3&&Math.abs(cy-drawStart.y)<3)return;
+  const color=document.getElementById('strokeColor').value;
+  const width=parseInt(document.getElementById('strokeWidth').value)||2;
+  if(!drawEdits[currentPage])drawEdits[currentPage]=[];
+  drawEdits[currentPage].push({type:mode,x1:drawStart.x,y1:drawStart.y,x2:cx,y2:cy,color,width,opacity:mode==='highlight'?0.35:1});
+  redrawShapes();
+});
+
+// Click to add text
+pageWrap.addEventListener('click',e=>{
+  if(mode!=='addtext')return;
+  if(e.target!==document.getElementById('pdfCanvas')&&e.target!==document.getElementById('drawCanvas'))return;
+  const r=document.getElementById('pdfCanvas').getBoundingClientRect();
+  const vph=document.getElementById('pdfCanvas').height;
+  const pdfX=(e.clientX-r.left)/scale, pdfY=(vph-(e.clientY-r.top))/scale;
+  const fs=parseInt(document.getElementById('fontSize').value)||14;
+  const color=document.getElementById('strokeColor').value;
+  const fontName=document.getElementById('fontFamily').value;
+  const ed={x:pdfX,y:pdfY,fs,color,fontName,newText:'Text',isNew:true};
+  if(!textEdits[currentPage])textEdits[currentPage]=[];
+  textEdits[currentPage].push(ed);
+  const span=addNewTextSpan(ed);
+  setTimeout(()=>{span.focus();document.execCommand('selectAll',false,null);},10);
+});
+
+// ---- IMAGE UPLOAD ----
+function triggerImageUpload(){
+  document.getElementById('imgInput').click();
+}
+document.getElementById('imgInput').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const dataUrl=ev.target.result;
+    const vph=document.getElementById('pdfCanvas').height;
+    const vpw=document.getElementById('pdfCanvas').width;
+    const ed={type:'image',dataUrl,cx:vpw/2-75,cy:vph/2-75,cw:150,ch:150,
+      x:(vpw/2-75)/scale, y:(vph-(vph/2+75))/scale, w:150/scale, h:150/scale};
+    if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
+    overlayEdits[currentPage].push(ed);
+    createOverlayEl(ed);
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+});
+
+// ---- SIGNATURE ----
+let sigDrawing=false, sigCtx=null;
+function openSigModal(){
+  document.getElementById('sigModal').classList.add('show');
+  const c=document.getElementById('sigCanvas');
+  sigCtx=c.getContext('2d');
+  sigCtx.clearRect(0,0,c.width,c.height);
+  sigCtx.strokeStyle='#000'; sigCtx.lineWidth=2; sigCtx.lineCap='round';
+  c.onmousedown=e=>{sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);};
+  c.onmousemove=e=>{if(!sigDrawing)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
+  c.onmouseup=()=>sigDrawing=false;
+  c.onmouseleave=()=>sigDrawing=false;
+  // touch
+  c.ontouchstart=e=>{e.preventDefault();sigDrawing=true;sigCtx.beginPath();const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);};
+  c.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const r=c.getBoundingClientRect();const t=e.touches[0];sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);sigCtx.stroke();};
+  c.ontouchend=()=>sigDrawing=false;
+}
+function clearSig(){const c=document.getElementById('sigCanvas');sigCtx.clearRect(0,0,c.width,c.height);}
+function closeSigModal(){document.getElementById('sigModal').classList.remove('show');}
+function placeSig(){
+  const c=document.getElementById('sigCanvas');
+  const dataUrl=c.toDataURL('image/png');
+  const vph=document.getElementById('pdfCanvas').height;
+  const vpw=document.getElementById('pdfCanvas').width;
+  const ed={type:'sig',dataUrl,cx:vpw/2-100,cy:vph-120,cw:200,ch:80,
+    x:(vpw/2-100)/scale,y:(vph-(vph-120+80))/scale,w:200/scale,h:80/scale};
+  if(!overlayEdits[currentPage])overlayEdits[currentPage]=[];
+  overlayEdits[currentPage].push(ed);
+  createOverlayEl(ed);
+  closeSigModal();
+}
+
+// ---- UNDO ----
+function undoLast(){
+  // Try draw edits first, then text, then overlay
+  if(drawEdits[currentPage]&&drawEdits[currentPage].length){drawEdits[currentPage].pop();redrawShapes();return;}
+  if(overlayEdits[currentPage]&&overlayEdits[currentPage].length){overlayEdits[currentPage].pop();rebuildOverlays();return;}
+  if(textEdits[currentPage]&&textEdits[currentPage].length){textEdits[currentPage].pop();renderPage(currentPage);}
+}
+
+// ---- MODE ----
 function setMode(m){
   mode=m;
   document.querySelectorAll('.tbtn[id^="tbtn-"]').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tbtn-'+m)?.classList.add('active');
-  document.getElementById('pageWrap').classList.toggle('addmode',m==='addtext');
-  document.getElementById('hintText').textContent=
-    m==='addtext'?'Click anywhere on the PDF to add new text':'Click any text on the PDF to edit it directly';
+  const btn=document.getElementById('tbtn-'+m);
+  if(btn)btn.classList.add('active');
+  pageWrap.className='mode-'+m;
+  // enable/disable text layer pointer events
+  document.getElementById('textLayer').style.pointerEvents=(m==='text'||m==='addtext')?'none':'none';
+  // for text mode, spans handle their own pointer events
+  if(m==='text'||m==='addtext'){
+    document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents='all');
+  } else {
+    document.querySelectorAll('.ts').forEach(s=>s.style.pointerEvents='none');
+  }
 }
 
+// ---- APPLY & DOWNLOAD ----
 async function applyChanges(){
-  const allEdits=Object.values(edits).flat();
-  if(!allEdits.length){alert('No changes to apply.');return;}
+  const hasEdits=Object.values(textEdits).flat().length||Object.values(drawEdits).flat().length||Object.values(overlayEdits).flat().length;
+  if(!hasEdits){alert('No changes to apply.');return;}
   showModal('Saving PDF...');
   try{
     const {PDFDocument,rgb,StandardFonts}=PDFLib;
     const doc=await PDFDocument.load(new Uint8Array(originalBytes.slice(0)),{ignoreEncryption:true});
     const fontMap={'Helvetica':StandardFonts.Helvetica,'Times-Roman':StandardFonts.TimesRoman,'Courier':StandardFonts.Courier};
 
-    for(const [pg,pgEdits] of Object.entries(edits)){
-      const page=doc.getPage(parseInt(pg)-1);
-      const {height}=page.getSize();
-      for(const ed of pgEdits){
-        const fKey=fontMap[ed.fontName]||StandardFonts.Helvetica;
-        const font=await doc.embedFont(fKey);
+    for(let pg=1;pg<=doc.getPageCount();pg++){
+      const page=doc.getPage(pg-1);
+      const {width,height}=page.getSize();
+
+      // TEXT EDITS
+      for(const ed of (textEdits[pg]||[])){
+        const font=await doc.embedFont(fontMap[ed.fontName]||StandardFonts.Helvetica);
         const fs=ed.fs||14;
         if(!ed.isNew){
-          // Whiteout original
           const tw=font.widthOfTextAtSize(ed.origText||ed.newText,fs)+4;
           page.drawRectangle({x:ed.x-1,y:ed.y-2,width:tw,height:fs+4,color:rgb(1,1,1)});
         }
         const c=hexRgb(ed.color||'#000000');
         page.drawText(ed.newText,{x:ed.x,y:ed.y,size:fs,font,color:rgb(c.r,c.g,c.b)});
+      }
+
+      // DRAW EDITS (shapes/highlight/whiteout)
+      for(const ed of (drawEdits[pg]||[])){
+        const c=hexRgb(ed.color||'#000000');
+        const col=rgb(c.r,c.g,c.b);
+        const x1=ed.x1,y1=ed.y1,x2=ed.x2,y2=ed.y2;
+        const lw=ed.width||2;
+        if(ed.type==='rect'){
+          page.drawRectangle({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),borderColor:col,borderWidth:lw,opacity:0,borderOpacity:1});
+        } else if(ed.type==='circle'){
+          page.drawEllipse({x:(x1+x2)/2,y:(y1+y2)/2,xScale:Math.abs(x2-x1)/2,yScale:Math.abs(y2-y1)/2,borderColor:col,borderWidth:lw,opacity:0,borderOpacity:1});
+        } else if(ed.type==='line'){
+          page.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},color:col,thickness:lw});
+        } else if(ed.type==='highlight'){
+          const hc=hexRgb(ed.color||'#ffeb3b');
+          page.drawRectangle({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),color:rgb(hc.r,hc.g,hc.b),opacity:0.35});
+        } else if(ed.type==='whiteout'){
+          page.drawRectangle({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),color:rgb(1,1,1),opacity:1});
+        }
+      }
+
+      // OVERLAY EDITS (images/signatures)
+      for(const ed of (overlayEdits[pg]||[])){
+        const imgBytes=await fetch(ed.dataUrl).then(r=>r.arrayBuffer());
+        let embImg;
+        try{embImg=await doc.embedPng(imgBytes);}catch{try{embImg=await doc.embedJpg(imgBytes);}catch{continue;}}
+        const x=ed.cx/scale, y=height-(ed.cy/scale)-(ed.ch/scale);
+        page.drawImage(embImg,{x,y,width:ed.cw/scale,height:ed.ch/scale});
       }
     }
 
@@ -355,7 +574,7 @@ async function applyChanges(){
     a.href=url;a.download='edited.pdf';a.click();
     URL.revokeObjectURL(url);
     hideModal();
-  }catch(e){hideModal();alert('Error: '+e.message);}
+  }catch(e){hideModal();alert('Error: '+e.message);console.error(e);}
 }
 
 function hexRgb(h){return{r:parseInt(h.slice(1,3),16)/255,g:parseInt(h.slice(3,5),16)/255,b:parseInt(h.slice(5,7),16)/255};}
@@ -363,6 +582,9 @@ function changePage(d){const n=currentPage+d;if(n<1||n>pdfJsDoc.numPages)return;
 function changeZoom(d){scale=Math.max(0.5,Math.min(3,scale+d));document.getElementById('zoomLbl').textContent=Math.round(scale/1.5*100)+'%';if(pdfJsDoc)renderPage(currentPage);}
 function showModal(m){document.getElementById('loadMsg').textContent=m;document.getElementById('loadModal').classList.add('show');}
 function hideModal(){document.getElementById('loadModal').classList.remove('show');}
+
+// Deselect overlays on outside click
+document.addEventListener('click',e=>{if(!e.target.closest('.ov-el'))document.querySelectorAll('.ov-el').forEach(el=>el.classList.remove('selected'));});
 </script>
 </body>
 </html>
